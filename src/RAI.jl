@@ -26,9 +26,7 @@ export
     AccessToken,
     ClientCredentials,
     Config,
-    Context,
-    Headers,
-    QueryArgs
+    Context
 
 include("creds.jl")
 include("config.jl")
@@ -36,9 +34,13 @@ include("rest.jl")
 
 conf = load_config()
 ctx = Context(conf)
-h = Headers()
-_default_headers!(ctx, h)
-println(ctx)
-println(h)
+h = Dict{String,String}()
+
+#_default_headers!(ctx, h)
+#println(ctx)
+#println(h)
+
+println("***")
+request(ctx, "GET", "/foo/bar")
 
 end # module

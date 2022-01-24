@@ -21,8 +21,11 @@ end
 
 abstract type Credentials end
 
-struct ClientCredentials <: Credentials
+mutable struct ClientCredentials <: Credentials
     client_id::String
     client_secret::String
     client_credentials_url::Union{String,Nothing}
+    access_token::Union{String,Nothing}
+    ClientCredentials(client_id, client_secret, client_credentials_url=nothing) =
+        new(client_id, client_secret, client_credentials_url, nothing)
 end

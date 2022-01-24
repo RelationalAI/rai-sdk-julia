@@ -20,7 +20,7 @@ mutable struct Config
     scheme::Union{String,Nothing}
     host::Union{String,Nothing}
     port::Union{String,Nothing}
-    credentials::{Credentials, Nothing}
+    credentials::Union{Credentials,Nothing}
 end
 
 function _load_stanza(fname::AbstractString, profile::AbstractString)::Dict{Any,Any}
