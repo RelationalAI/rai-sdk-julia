@@ -31,16 +31,11 @@ export
 include("creds.jl")
 include("config.jl")
 include("rest.jl")
+include("api.jl")
 
 conf = load_config()
 ctx = Context(conf)
-h = Dict{String,String}()
-
-#_default_headers!(ctx, h)
-#println(ctx)
-#println(h)
-
-println("***")
-request(ctx, "GET", "/foo/bar")
+rsp = list_databases(ctx)
+println(rsp)
 
 end # module

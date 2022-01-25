@@ -12,22 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-using Dates: DateTime
+const PATH_DATABASE = "/database"
+const PATH_ENGINE = "/compute"
+const PATH_OAUTH_CLIENTS = "/oauth-clients"
+const PATH_TRANSACTION = "/transaction"
+const PATH_USER = "/users"
 
-struct AccessToken
-    token::String
-    scope::String
-    expires_in::Int
-    created_on::DateTime
+function _mkurl(ctx::Context, path::AbstractString)::String
+    return "$(ctx.scheme)://$(ctx.host):$(ctx.port)$path"
 end
 
-abstract type Credentials end
-
-mutable struct ClientCredentials <: Credentials
-    client_id::String
-    client_secret::String
-    client_credentials_url::Union{String,Nothing}
-    access_token::Union{AccessToken,Nothing}
-    ClientCredentials(client_id, client_secret, client_credentials_url = nothing) =
-        new(client_id, client_secret, client_credentials_url, nothing)
+# todo: filters
+function list_databases(ctx::Context)
+    return request(ctx, "GET", _mkurl(ctx, PATH_DATABASE))
 end

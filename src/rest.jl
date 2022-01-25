@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+using Dates: now
 import HTTP
+import JSON3
 
 """
     Context
@@ -52,44 +54,36 @@ function _haskeyfold(headers::HTTP.Headers, key::AbstractString)::Bool
 end
 
 # Returns the default User-Agent string for this library.
-function _default_user_agent()::String
+function _user_agent()
     return "rai-sdk-julia/$VERSION"
 end
 
 # Ensures that the given headers contain the required values.
-function _ensure_headers!(
-    ctx::Context, h::HTTP.Headers=HTTP.Headers()
-)::HTTP.Headers
-    !_haskeyfold(h, "accept") &&
-        push!(h, "Accept" => "application/json")
-    !_haskeyfold(h, "content-type") &&
-        push!(h, "Content-Type" => "application/json")
-    !_haskeyfold(h, "host") &&
-        push!(h, "Host" => ctx.host)
-    !_haskeyfold(h, "user-agent") &&
-        push!(h, "User-Agent" => _default_user_agent())
+function _ensure_headers!(h::HTTP.Headers = HTTP.Headers())::HTTP.Headers
+    !_haskeyfold(h, "accept") && push!(h, "Accept" => "application/json")
+    !_haskeyfold(h, "content-type") && push!(h, "Content-Type" => "application/json")
+    !_haskeyfold(h, "user-agent") && push!(h, "User-Agent" => _user_agent())
     return h
 end
 
-const _default_client_credentials_url =
-    "https://login.relationalai.com/oauth/token"
-
-function get_access_token(ctx::Context, creds::ClientCredentials)
-    url = !isnothing(creds.client_credentials_url) ?
-        creds.client_credentials_url : _default_client_credentials_url
-    h = _ensure_headers!(ctx)
+function get_access_token(ctx::Context, creds::ClientCredentials)::AccessToken
+    url = _get_client_credentials_url(creds)
+    h = _ensure_headers!()
     body = """{
         "client_id": "$(creds.client_id)",
         "client_secret": "$(creds.client_secret)",
         "audience": "https://$(ctx.host)",
         "grant_type": "client_credentials"
     }"""
-    println(creds.client_id)
-    println(creds.client_secret)
-    println(url)
-    println(body)
-    rsp = HTTP.post(url, h, body)
-    println(rsp)
+    opts = (readtimeout = 5, redirect = false, retry = false)
+    rsp = HTTP.request("POST", url, h, body; opts...)
+    data = JSON3.read(rsp.body)
+    return AccessToken(data.access_token, data.scope, data.expires_in, now())
+end
+
+function _get_client_credentials_url(creds::ClientCredentials)::String
+    return !isnothing(creds.client_credentials_url) ?
+           creds.client_credentials_url : "https://login.relationalai.com/oauth/token"
 end
 
 function _authenticate!(ctx::Context, headers::HTTP.Headers)::Nothing
@@ -105,16 +99,16 @@ function _authenticate!(
     if isnothing(creds.access_token)
         creds.access_token = get_access_token(ctx, creds)
     end
-    push!(headers, "Authorization" => "Bearer $(creds.access_token)")
+    push!(headers, "Authorization" => "Bearer $(creds.access_token.token)")
     return nothing
 end
 
 function request(
-    ctx::Context, method, url, h=HTTP.Header[], b=UInt8[];
-    headers=h, query=nothing, body=b, kw...
+    ctx::Context, method, url, h = HTTP.Header[], b = UInt8[];
+    headers = h, query = nothing, body = b, kw...
 )::HTTP.Response
-    _ensure_headers!(ctx, headers)
+    _ensure_headers!(headers)
     _authenticate!(ctx, headers)
-    println(headers)
-    #return request(method, url, headers, body; query=query, kw...)
+    opts = (redirect = false, retry = false, status_exception = false)
+    return HTTP.request(method, url, headers, body; query = query, opts...)
 end
