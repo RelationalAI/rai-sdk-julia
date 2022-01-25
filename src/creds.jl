@@ -17,8 +17,14 @@ using Dates: DateTime
 struct AccessToken
     token::String
     scope::String
-    expires_in::Int
+    expires_in::Int  # seconds
     created_on::DateTime
+end
+
+function isexpired(access_token::AccessToken)::Bool
+    expires_in = access_token.expires_in * 1000  # millis
+    expires_on = access_token.created_on + expires_in
+    return expires_on > now()
 end
 
 abstract type Credentials end

@@ -35,7 +35,7 @@ include("api.jl")
 
 conf = load_config()
 ctx = Context(conf)
-rsp = list_databases(ctx)
+rsp = list_users(ctx)
 println(rsp)
 
 end # module

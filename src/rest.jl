@@ -16,6 +16,14 @@ using Dates: now
 import HTTP
 import JSON3
 
+struct HTTPError <: Exception
+    status::Int
+    message::String
+    HTTPError(status, message) = new(status, message)
+    HTTPError(status) = new(status, HTTP.statustext(status))
+end
+
+
 """
     Context
 
