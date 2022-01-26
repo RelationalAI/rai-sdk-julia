@@ -23,7 +23,6 @@ struct HTTPError <: Exception
     HTTPError(status) = new(status, HTTP.statustext(status))
 end
 
-
 """
     Context
 
@@ -63,7 +62,7 @@ end
 
 # Returns the default User-Agent string for this library.
 function _user_agent()
-    return "rai-sdk-julia/$VERSION"
+    return "rai-sdk-julia/$PROJECT_VERSION"
 end
 
 # Ensures that the given headers contain the required values.
@@ -89,12 +88,12 @@ function get_access_token(ctx::Context, creds::ClientCredentials)::AccessToken
     return AccessToken(data.access_token, data.scope, data.expires_in, now())
 end
 
-function _get_client_credentials_url(creds::ClientCredentials)::String
+function _get_client_credentials_url(creds::ClientCredentials)
     return !isnothing(creds.client_credentials_url) ?
            creds.client_credentials_url : "https://login.relationalai.com/oauth/token"
 end
 
-function _authenticate!(ctx::Context, headers::HTTP.Headers)::Nothing
+function _authenticate!(ctx::Context, headers::HTTP.Headers)
     _authenticate!(ctx, ctx.credentials, headers)
     return nothing
 end
@@ -117,6 +116,6 @@ function request(
 )::HTTP.Response
     _ensure_headers!(headers)
     _authenticate!(ctx, headers)
-    opts = (redirect = false, retry = false, status_exception = false)
-    return HTTP.request(method, url, headers, body; query = query, opts...)
+    opts = (redirect = false, retry = false)
+    return HTTP.request(method, url, headers; query = query, body = body, opts..., kw...)
 end

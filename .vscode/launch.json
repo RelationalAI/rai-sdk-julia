@@ -7,8 +7,8 @@
         {
             "type": "julia",
             "request": "launch",
-            "name": "Run RAI.jl",
-            "program": "${workspaceFolder}/src/RAI.jl",
+            "name": "Run tst.jl",
+            "program": "${workspaceFolder}/tst.jl",
             "stopOnEntry": false,
             "cwd": "${workspaceFolder}",
             "juliaEnv": "${command:activeJuliaEnvironment}"

@@ -12,30 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-    RAI
-
-The `RAI` module provides functionality for accessing the RelationalAI REST
-APIs.
-"""
-module RAI
-
-const VERSION = v"0.0.1"
-
-export
-    AccessToken,
-    ClientCredentials,
-    Config,
-    Context
-
-include("creds.jl")
-include("config.jl")
-include("rest.jl")
-include("api.jl")
-
-conf = load_config()
-ctx = Context(conf)
-rsp = list_users(ctx)
-println(rsp)
-
-end # module
+using RAILib

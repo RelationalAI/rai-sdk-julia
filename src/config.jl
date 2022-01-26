@@ -23,7 +23,7 @@ mutable struct Config
     credentials::Union{Credentials,Nothing}
 end
 
-function _load_stanza(fname::AbstractString, profile::AbstractString)::Dict{Any,Any}
+function _load_stanza(fname::AbstractString, profile::AbstractString)
     fname = Filesystem.expanduser(fname)
     conf = ConfParser.ConfParse(fname)
     ConfParser.parse_conf!(conf)
@@ -38,10 +38,9 @@ function _get_value(d::Dict, k::String)
     return v[1]
 end
 
-function load_config(
-    fname::AbstractString = "~/.rai/config";
-    profile::AbstractString = "default"
-)::Config
+function load_config(; fname = nothing, profile = nothing)::Config
+    isnothing(fname) && (fname = "~/.rai/config")
+    isnothing(profile) && (profile = "default")
     stanza = _load_stanza(fname, profile)
     region = _get_value(stanza, "region")
     scheme = _get_value(stanza, "scheme")

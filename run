@@ -1,3 +1,3 @@
 #!/bin/bash
 
-julia --project=. src/RAI.jl
+julia --project=. $* 2>&1 | tee tst.out
