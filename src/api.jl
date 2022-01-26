@@ -20,6 +20,13 @@ const PATH_OAUTH_CLIENTS = "/oauth-clients"
 const PATH_TRANSACTION = "/transaction"
 const PATH_USER = "/users"
 
+# Returns a `Dict` constructed from the given pairs, skipping pairs where
+# the value is `nothing`.
+function _mkdict(pairs::Pair...)
+    d = Dict((k => v) for (k, v) in pairs if !isnothing(v))
+    return length(d) > 0 ? d : nothing
+end
+
 # Returns a path constructed from the given segments.
 function _mkpath(parts...)
     return join(parts, "/")
@@ -56,78 +63,80 @@ function _put(ctx::Context, path; body = nothing, kw...)
     return JSON3.read(rsp.body)
 end
 
-function create_engine(ctx::Context, engine, size = nothing; kw...)
+function create_engine(ctx::Context, engine::AbstractString, size = nothing; kw...)
     isnothing(size) && (size = "XS")
     data = ("region" => ctx.region, "name" => engine, "size" => size)
     return _put(ctx, PATH_ENGINE; body = JSON3.write(data), kw...)
 end
 
-function create_oauth_client(ctx::Context, name, permissions; kv...)
+function create_oauth_client(ctx::Context, name::AbstractString, permissions; kv...)
     isnothing(permissions) && (permissions = [])
     data = ("name" => name, "permissions" => permissions)
     return _post(ctx, PATH_OAUTH_CLIENTS; body = JSON3.write(data), kv...)
 end
 
-function create_user(ctx::Context, email, roles = nothing; kw...)
+function create_user(ctx::Context, email::AbstractString, roles = nothing; kw...)
     isnothing(roles) && (roles = [])
     data = ("email" => email, "roles" => roles)
     return _post(ctx, PATH_USER; body = JSON3.write(data), kw...)
 end
 
-function delete_database(ctx::Context, database; kw...)
+function delete_database(ctx::Context, database::AbstractString; kw...)
     data = ("name" => database)
     return _delete(ctx, PATH_DATABASE; body = JSON3.write(data), kw...)
 end
 
-function delete_engine(ctx::Context, engine; kw...)
+function delete_engine(ctx::Context, engine::AbstractString; kw...)
     data = ("name" => engine)
     return _delete(ctx, PATH_ENGINE; body = JSON3.write(data), kw...)
 end
 
-function delete_oauth_client(ctx::Context, id; kw...)
+function delete_oauth_client(ctx::Context, id::AbstractString; kw...)
     return _delete(ctx, _mkpath(PATH_OAUTH_CLIENTS, id); kw...)
 end
 
-function delete_user(ctx::Context, userid; kw...)
+function delete_user(ctx::Context, userid::AbstractString; kw...)
     return _delete(ctx, _mkpath(PATH_USER, userid); kw...)
 end
 
-function disable_user(ctx::Context, userid; kw...)
+function disable_user(ctx::Context, userid::AbstractString; kw...)
     return update_user(ctx, userid; status = "INACTIVE", kw...)
 end
 
-function enable_user(ctx::Context, userid; kw...)
+function enable_user(ctx::Context, userid::AbstractString; kw...)
     return update_user(ctx, userid; status = "ACTIVE", kw...)
 end
 
-function get_engine(ctx::Context, engine; kw...)
-    query = ("name" => engine)
+function get_engine(ctx::Context, engine::AbstractString; kw...)
+    query = Dict("name" => engine)
     rsp = _get(ctx, PATH_ENGINE; query = query, kw...)
     length(rsp) == 0 && throw(HTTPError(404))
     return rsp[1]
 end
 
-function get_database(ctx::Context, database; kw...)
-    query = ("name" => database)
-    rsp = _get(ctx, PATH_DATABASE; query = query, kw...).engine
-    length(rsp) == 0 && throw(HTTPError(404))
+function get_database(ctx::Context, database::AbstractString; kw...)
+    query = Dict("name" => database)
+    rsp = _get(ctx, PATH_DATABASE; query = query, kw...).databases
+    length(rsp) == 0 && throw(HTTPError(404)).databases
     return rsp[1]
 end
 
-function get_oauth_client(ctx::Context, id; kw...)
+function get_oauth_client(ctx::Context, id::AbstractString; kw...)
     return _get(ctx, _mkpath(PATH_OAUTH_CLIENTS, id); kw...).client
 end
 
-function get_user(ctx::Context, userid; kw...)
+function get_user(ctx::Context, userid::AbstractString; kw...)
     return _get(ctx, _mkpath(PATH_USER, userid); kw...).user
 end
 
-function list_engines(ctx::Context; query = nothing, kw...)
-    return _get(ctx, PATH_ENGINE; query = query, kw...).computes
+function list_databases(ctx::Context; state = nothing, kw...)
+    query = _mkdict("state" => state)
+    return _get(ctx, PATH_DATABASE; query = query, kw...).databases
 end
 
-function list_databases(ctx::Context; query = nothing, kw...)
-    return _get(ctx, PATH_DATABASE; query = query, kw...).databases
+function list_engines(ctx::Context; state = nothing, kw...)
+    query = _mkdict("state" => state)
+    return _get(ctx, PATH_ENGINE; query = query, kw...).computes
 end
 
 function list_oauth_clients(ctx::Context; query = nothing, kw...)
@@ -138,14 +147,8 @@ function list_users(ctx::Context; query = nothing, kw...)
     return _get(ctx, PATH_USER; query = query, kw...).users
 end
 
-function update_user(ctx::Context, userid; status = nothing, roles = nothing, kw...)
-    data = Dict{String,String}()
-    if !isnothing(status)
-        data["status"] = status
-    end
-    if !isnothing(roles)
-        data["roles"] = roles
-    end
+function update_user(ctx::Context, userid::AbstractString; status = nothing, roles = nothing, kw...)
+    data = _mkdict("status" => status, "roles" => roles)
     return _patch(ctx, _mkpath(PATH_USER, userid); body = JSON3.write(data), kw...)
 end
 
@@ -183,29 +186,28 @@ end
 
 # Returns the serialized request body for the given transaction.
 function body(tx::Transaction, actions...)::String
-    data = (
+    data = _mkdict(
         "type" => "Transaction",
-        "abort" => tx.abort,
         "dbname" => tx.database,
         "mode" => !isnothing(tx.mode) ? tx.mode : "OPEN",
-        "nowaite_durable" => tx.nowait_durable,
+        "computeName" => tx.engine,
+        "source_dbname" => tx.source,
+        "abort" => tx.abort,
         "readonly" => tx.readonly,
+        "nowaite_durable" => tx.nowait_durable,
         "version" => tx.version,
         "actions" => _make_actions(actions...))
-    !isnothing(tx.engine) && (tx["computeName"] = tx.engine)
-    !isnothing(tx.source) && (tx["source_dbname"] = tx.source)
     return JSON3.write(data)
 end
 
 # Returns the request query params for the given transaction.
 function query(tx::Transaction)
-    data = (
+    return _mkdict(
         "dbname" => tx.database,
         "compute_name" => tx.engine,
         "open_mode" => tx.mode,
-        "region" => tx.region)
-    !isnothing(tx.source) && (data["source_dbname"] = tx.source)
-    return data
+        "region" => tx.region,
+        "source_dbname" => tx.source)
 end
 
 function _create_mode(source, overwrite)
@@ -268,19 +270,11 @@ function _make_query_action_input(name, value)
 end
 
 function _make_relkey(name, key)
-    return (
-        "type" => "RelKey",
-        "name" => name,
-        "keys" => [key],
-        "values" => [])
+    return ("type" => "RelKey", "name" => name, "keys" => [key], "values" => [])
 end
 
 function _make_query_source(name, model)
-    return (
-        "type" => "Source",
-        "name" => name,
-        "path" => "",
-        "value" => model)
+    return ("type" => "Source", "name" => name, "path" => "", "value" => model)
 end
 
 function _reltype(_::AbstractString)
@@ -334,7 +328,7 @@ function _gen_config(name, value)
 end
 
 function _gen_config(syntax::Dict{String,Any})
-    items = [_gen_config(k, v) for (k, v) in d if !isnothing(v)]
+    items = [_gen_config(k, v) for (k, v) in syntax if !isnothing(v)]
     return join(items, "\n")
 end
 

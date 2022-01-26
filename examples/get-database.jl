@@ -10,6 +10,19 @@
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
-# limitations under the License.
+# limitations under the License
 
-using RAI
+# Fetch details of the given database.
+
+using ArgParse
+using RAI: Context, load_config, get_database
+
+s = add_arg_table!(ArgParseSettings(),
+    "database", Dict(:help => "database name", :required => true),
+    "--profile", Dict(:help => "config profile (default: default)"))
+args = parse_args(ARGS, s)
+
+cfg = load_config(; profile=args["profile"])
+ctx = Context(cfg)
+rsp = get_database(ctx, args["database"])
+println(rsp)

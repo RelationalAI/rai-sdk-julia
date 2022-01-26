@@ -114,6 +114,7 @@ function request(
     ctx::Context, method, url, h = HTTP.Header[], b = UInt8[];
     headers = h, query = nothing, body = b, kw...
 )::HTTP.Response
+    isnothing(body) && (body = UInt8[])
     _ensure_headers!(headers)
     _authenticate!(ctx, headers)
     opts = (redirect = false, retry = false)

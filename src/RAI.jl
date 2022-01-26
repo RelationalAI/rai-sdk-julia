@@ -13,12 +13,12 @@
 # limitations under the License.
 
 """
-    RAILib
+    RAI
 
-The `RAILib` module provides functionality for accessing the RelationalAI REST
+The `RAI` module provides functionality for accessing the RelationalAI REST
 APIs.
 """
-module RAILib
+module RAI
 
 const PROJECT_VERSION = v"0.0.1"
 
@@ -61,8 +61,9 @@ export
 
 export
     exec,
-    list_edbs,
+    install_model,
     load_csv,
+    list_edbs,
     load_json
 
 include("creds.jl")

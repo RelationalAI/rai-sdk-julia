@@ -12,17 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-using ArgParse
-using RAILib: Context, load_config, list_databases
+# List databases, optionally filtering by state.
 
-s = ArgParseSettings()
-@add_arg_table s begin
-    "--state" help = "state filter (default: nothing)"
-    "--profile" help = "config profile (default: default)"
-end
+using ArgParse
+using RAI: Context, load_config, list_databases
+
+s = add_arg_table!(ArgParseSettings(),
+    "--state", Dict(:help => "state filter (default: nothing)"),
+    "--profile", Dict(:help => "config profile (default: default)"))
 args = parse_args(ARGS, s)
 
 conf = load_config(; profile=args["profile"])
 ctx = Context(conf)
-rsp = list_databases(ctx)
+rsp = list_databases(ctx; state=args["state"])
 println(rsp)

@@ -1,0 +1,3 @@
+#!/bin/bash
+
+julia --project=.. $* 2>&1
