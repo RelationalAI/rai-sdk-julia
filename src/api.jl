@@ -108,14 +108,14 @@ function enable_user(ctx::Context, userid::AbstractString; kw...)
 end
 
 function get_engine(ctx::Context, engine::AbstractString; kw...)
-    query = Dict{String,String}("name" => engine)
-    rsp = _get(ctx, PATH_ENGINE; query = query, kw...)
+    query = Dict("name" => engine, "deleted_on" => "")
+    rsp = _get(ctx, PATH_ENGINE; query = query, kw...).computes
     length(rsp) == 0 && throw(HTTPError(404))
     return rsp[1]
 end
 
 function get_database(ctx::Context, database::AbstractString; kw...)
-    query = Dict{String,String}("name" => database)
+    query = Dict("name" => database)
     rsp = _get(ctx, PATH_DATABASE; query = query, kw...).databases
     length(rsp) == 0 && throw(HTTPError(404)).databases
     return rsp[1]
@@ -139,7 +139,7 @@ function get_oauth_client(ctx::Context, id::AbstractString; kw...)
 end
 
 function get_user(ctx::Context, userid::AbstractString; kw...)
-    return _get(ctx, _mkpath(PATH_USER, userid); kw...).user
+    return _get(ctx, _mkpath(PATH_USERS, userid); kw...).user
 end
 
 function list_databases(ctx::Context; state = nothing, kw...)
@@ -153,7 +153,7 @@ function list_engines(ctx::Context; state = nothing, kw...)
 end
 
 function list_oauth_clients(ctx::Context; kw...)
-    return _get(ctx, PATH_OAUTH_CLIENTS; query = query, kw...).clients
+    return _get(ctx, PATH_OAUTH_CLIENTS; kw...).clients
 end
 
 function list_users(ctx::Context; kw...)
@@ -235,7 +235,7 @@ end
 function _make_actions(actions...)
     result = []
     for (i, action) in enumerate(actions)
-        item = Dict{String,Any}(
+        item = Dict(
             "name" => "action$i",
             "type" => "LabeledAction",
             "action" => action)
@@ -245,7 +245,7 @@ function _make_actions(actions...)
 end
 
 function _make_delete_models_action(models::Vector)
-    return Dict{String,Any}(
+    return Dict(
         "type" => "ModifyWorkspaceAction",
         "delete_source" => models)
 end
@@ -262,6 +262,15 @@ end
 
 function _make_list_edb_action()
     return Dict("type" => "ListEdbAction")
+end
+
+function _make_query_action(source, ::Nothing)
+    return Dict(
+        "type" => "QueryAction",
+        "source" => _make_query_source("query", source),
+        "persist" => [],
+        "inputs" => [],
+        "outputs" => [])
 end
 
 function _make_query_action(source, inputs::Dict)
@@ -313,14 +322,14 @@ end
 # Execute the given query string, using any given optioanl query inputs.
 function exec(ctx::Context, database, engine, source; inputs = nothing, readonly = false, kw...)
     tx = Transaction(ctx.region, database, engine, "OPEN"; readonly = readonly)
-    body = body(tx, _make_query_action(source, inputs))
-    return _post(ctx, PATH_TRANSACTION; query = query(tx), body = body, kw...)
+    data = body(tx, _make_query_action(source, inputs))
+    return _post(ctx, PATH_TRANSACTION; query = query(tx), body = data, kw...)
 end
 
 function list_edbs(ctx::Context, database, engine; kw...)
     tx = Transaction(ctx.region, database, engine, "OPEN"; readonly = true)
-    body = body(tx, _make_list_edb_action())
-    rsp = _post(ctx, PATH_TRANSACTION; query = query(tx), body = body, kw...)
+    data = body(tx, _make_list_edb_action())
+    rsp = _post(ctx, PATH_TRANSACTION; query = query(tx), body = data, kw...)
     length(rsp.actions) == 0 && return []
     return rsp.actions[1].result.rels
 end
@@ -375,8 +384,8 @@ function load_csv(
     header = nothing, header_row = nothing, delim = nothing,
     quotechar = nothing, escapechar = nothing, kw...
 )
-    inputs = ("data" => _read_data(data))
-    syntax = (
+    inputs = Dict("data" => _read_data(data))
+    syntax = Dict(
         "header" => header, "header_row" => header_row, "delim" => delim,
         "quotechar" => quotechar, "escapechar" => escapechar)
     source = _gen_config(syntax)
@@ -386,7 +395,7 @@ function load_csv(
 end
 
 function load_json(ctx::Context, database, engine, relation, data; kw...)
-    inputs = ("data" => _read_data(data))
+    inputs = Dict("data" => _read_data(data))
     source += """def config:data = data\n
                  def insert:$relation = load_json[config]"""
     return exec(ctx, database, engine, source; inputs = inputs, readonly = false, kw...)
