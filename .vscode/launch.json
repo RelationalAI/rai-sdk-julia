@@ -8,11 +8,12 @@
             "type": "julia",
             "request": "launch",
             "name": "Run tst.jl",
-            "program": "${workspaceFolder}/tst.jl",
+            "program": "${workspaceFolder}/examples/list-models.jl",
             "stopOnEntry": false,
             "cwd": "${workspaceFolder}",
             "juliaEnv": "${command:activeJuliaEnvironment}",
             "args": [
+                "bradlo-test",
                 "bradlo-test"
             ]
         },

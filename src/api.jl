@@ -18,7 +18,7 @@ const PATH_DATABASE = "/database"
 const PATH_ENGINE = "/compute"
 const PATH_OAUTH_CLIENTS = "/oauth-clients"
 const PATH_TRANSACTION = "/transaction"
-const PATH_USER = "/users"
+const PATH_USERS = "/users"
 
 # Returns a `Dict` constructed from the given pairs, skipping pairs where
 # the value is `nothing`.
@@ -78,7 +78,7 @@ end
 function create_user(ctx::Context, email::AbstractString, roles = nothing; kw...)
     isnothing(roles) && (roles = [])
     data = ("email" => email, "roles" => roles)
-    return _post(ctx, PATH_USER; body = JSON3.write(data), kw...)
+    return _post(ctx, PATH_USERS; body = JSON3.write(data), kw...)
 end
 
 function delete_database(ctx::Context, database::AbstractString; kw...)
@@ -96,7 +96,7 @@ function delete_oauth_client(ctx::Context, id::AbstractString; kw...)
 end
 
 function delete_user(ctx::Context, userid::AbstractString; kw...)
-    return _delete(ctx, _mkpath(PATH_USER, userid); kw...)
+    return _delete(ctx, _mkpath(PATH_USERS, userid); kw...)
 end
 
 function disable_user(ctx::Context, userid::AbstractString; kw...)
@@ -108,17 +108,30 @@ function enable_user(ctx::Context, userid::AbstractString; kw...)
 end
 
 function get_engine(ctx::Context, engine::AbstractString; kw...)
-    query = Dict("name" => engine)
+    query = Dict{String,String}("name" => engine)
     rsp = _get(ctx, PATH_ENGINE; query = query, kw...)
     length(rsp) == 0 && throw(HTTPError(404))
     return rsp[1]
 end
 
 function get_database(ctx::Context, database::AbstractString; kw...)
-    query = Dict("name" => database)
+    query = Dict{String,String}("name" => database)
     rsp = _get(ctx, PATH_DATABASE; query = query, kw...).databases
     length(rsp) == 0 && throw(HTTPError(404)).databases
     return rsp[1]
+end
+
+function get_model(
+    ctx::Context,
+    database::AbstractString,
+    engine::AbstractString,
+    name::AbstractString; kw...
+)
+    models = _list_models(ctx, database, engine; kw...)
+    for model in models
+        model["name"] == name && return model["value"]
+    end
+    throw(HTTPError(404)).databases
 end
 
 function get_oauth_client(ctx::Context, id::AbstractString; kw...)
@@ -139,17 +152,17 @@ function list_engines(ctx::Context; state = nothing, kw...)
     return _get(ctx, PATH_ENGINE; query = query, kw...).computes
 end
 
-function list_oauth_clients(ctx::Context; query = nothing, kw...)
+function list_oauth_clients(ctx::Context; kw...)
     return _get(ctx, PATH_OAUTH_CLIENTS; query = query, kw...).clients
 end
 
-function list_users(ctx::Context; query = nothing, kw...)
-    return _get(ctx, PATH_USER; query = query, kw...).users
+function list_users(ctx::Context; kw...)
+    return _get(ctx, PATH_USERS; kw...).users
 end
 
 function update_user(ctx::Context, userid::AbstractString; status = nothing, roles = nothing, kw...)
     data = _mkdict("status" => status, "roles" => roles)
-    return _patch(ctx, _mkpath(PATH_USER, userid); body = JSON3.write(data), kw...)
+    return _patch(ctx, _mkpath(PATH_USERS, userid); body = JSON3.write(data), kw...)
 end
 
 """
@@ -222,31 +235,33 @@ end
 function _make_actions(actions...)
     result = []
     for (i, action) in enumerate(actions)
-        item = (
+        item = Dict{String,Any}(
             "name" => "action$i",
-            "type" => LabeledAction,
-            "action":action)
+            "type" => "LabeledAction",
+            "action" => action)
         push!(result, item)
     end
     return result
 end
 
 function _make_delete_models_action(models::Vector)
-    return ("type" => "ModifyWorkspaceAction", "delete_source" => models)
+    return Dict{String,Any}(
+        "type" => "ModifyWorkspaceAction",
+        "delete_source" => models)
 end
 
 function _make_install_model_action(name, model)
-    return (
+    return Dict(
         "type" => "InstallAction",
         "sources" => [_make_query_source(name, model)])
 end
 
 function _make_list_models_action()
-    return ("type" => "ListSourcesAction")
+    return Dict("type" => "ListSourceAction")
 end
 
 function _make_list_edb_action()
-    return ("type" => "ListEdbAction")
+    return Dict("type" => "ListEdbAction")
 end
 
 function _make_query_action(source, inputs::Dict)
@@ -254,7 +269,7 @@ function _make_query_action(source, inputs::Dict)
     for (k, v) in inputs
         push!(action_inputs, _make_query_action_input(k, v))
     end
-    return (
+    return Dict(
         "type" => "QueryAction",
         "source" => _make_query_source("query", source),
         "persist" => [],
@@ -263,22 +278,30 @@ function _make_query_action(source, inputs::Dict)
 end
 
 function _make_query_action_input(name, value)
-    return (
+    return Dict(
         "type" => "Relation",
         "columns" => [[value]],
         "rel_key" => _make_relkey(name, _reltype(value)))
 end
 
 function _make_relkey(name, key)
-    return ("type" => "RelKey", "name" => name, "keys" => [key], "values" => [])
+    return Dict(
+        "type" => "RelKey",
+        "name" => name,
+        "keys" => [key],
+        "values" => [])
 end
 
 function _make_query_source(name, model)
-    return ("type" => "Source", "name" => name, "path" => "", "value" => model)
+    return Dict(
+        "type" => "Source",
+        "name" => name,
+        "path" => "",
+        "value" => model)
 end
 
 function _reltype(_::AbstractString)
-    return return "RAI_VariableSizeStrings.VariableSizeString"
+    return "RAI_VariableSizeStrings.VariableSizeString"
 end
 
 function create_database(ctx::Context, database, engine; source = nothing, overwrite = false, kw...)
@@ -290,8 +313,7 @@ end
 # Execute the given query string, using any given optioanl query inputs.
 function exec(ctx::Context, database, engine, source; inputs = nothing, readonly = false, kw...)
     tx = Transaction(ctx.region, database, engine, "OPEN"; readonly = readonly)
-    action = _make_query_action(source, inputs)
-    body = body(tx, action)
+    body = body(tx, _make_query_action(source, inputs))
     return _post(ctx, PATH_TRANSACTION; query = query(tx), body = body, kw...)
 end
 
@@ -301,6 +323,19 @@ function list_edbs(ctx::Context, database, engine; kw...)
     rsp = _post(ctx, PATH_TRANSACTION; query = query(tx), body = body, kw...)
     length(rsp.actions) == 0 && return []
     return rsp.actions[1].result.rels
+end
+
+function _list_models(ctx::Context, database::AbstractString, engine::AbstractString; kw...)
+    tx = Transaction(ctx.region, database, engine, "OPEN"; readonly = true)
+    data = body(tx, _make_list_models_action())
+    rsp = _post(ctx, PATH_TRANSACTION; query = query(tx), body = data, kw...).actions
+    length(rsp) == 0 && return []
+    return rsp[1].result.sources
+end
+
+function list_models(ctx::Context, database::AbstractString, engine::AbstractString; kw...)
+    models = _list_models(ctx, database, engine; kw...)
+    return [model["name"] for model in models]
 end
 
 function _gen_literal(value::Bool)

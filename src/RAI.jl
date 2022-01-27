@@ -61,6 +61,7 @@ export
 
 export
     exec,
+    get_model,
     install_model,
     load_csv,
     list_edbs,
