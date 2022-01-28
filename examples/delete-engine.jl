@@ -12,29 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-# Create a database, optionally overwriting an existing database.
+# Delete an engine.
 
 using ArgParse
-using RAI: Context, load_config, create_database, get_database
+using RAI: Context, HTTPError, load_config, delete_engine, get_engine
 
 # Answers if the given value represents a terminal state.
-is_term_state(state) = state == "CREATED" || occursin("FAILED", state)
+is_term_state(state) = state == "DELETED" || occursin("FAILED", state)
 
-function run(database, engine, overwrite)
-    conf = load_config(; profile = args["profile"])
+function run(engine; profile)
+    conf = load_config(; profile = profile)
     ctx = Context(conf)
-    rsp = create_database(ctx, database, engine; overwrite = overwrite)
+    rsp = delete_engine(ctx, engine)
     while !is_term_state(get(rsp, "state", ""))  # wait for terminal state
         sleep(3)
-        rsp = get_database(ctx, database)
+        rsp = get_engine(ctx, engine)
     end
     println(rsp)
 end
 
 s = add_arg_table!(ArgParseSettings(),
-    "database", Dict(:help => "database name", :required => true),
     "engine", Dict(:help => "engine name", :required => true),
-    "--overwrite", Dict(:help => "overwrite existing database", :action => "store_true"),
     "--profile", Dict(:help => "config profile (default: default)"))
 args = parse_args(ARGS, s)
-run(args["database"], args["engine"], args["overwrite"])
+
+try
+    run(args["engine"]; profile = args["profile"])
+catch e
+    e isa HTTPError ? show(e) : rethrow(e)
+end

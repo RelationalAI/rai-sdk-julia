@@ -71,5 +71,6 @@ include("creds.jl")
 include("config.jl")
 include("rest.jl")
 include("api.jl")
+include("show.jl")
 
 end

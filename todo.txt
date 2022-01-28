@@ -3,3 +3,7 @@
 ## rest.jl
 
 * implement get_access_token_func callback
+
+## exaples
+
+delete-engine.jl returns 404 when engine is gone, should not report that error

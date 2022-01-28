@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# todo: writeup notes on philosophy of delegating as much as possible to server
+
 import JSON3
 
 const PATH_DATABASE = "/database"
@@ -19,6 +21,14 @@ const PATH_ENGINE = "/compute"
 const PATH_OAUTH_CLIENTS = "/oauth-clients"
 const PATH_TRANSACTION = "/transaction"
 const PATH_USERS = "/users"
+
+struct HTTPError <: Exception
+    status_code::Int
+    status_text::String
+    details::Union{String,Nothing}
+    HTTPError(status_code) = new(status_code, HTTP.statustext(status_code), nothing)
+    HTTPError(status_code, details) = new(status_code, HTTP.statustext(status_code), details)
+end
 
 # Returns a `Dict` constructed from the given pairs, skipping pairs where
 # the value is `nothing`.
@@ -38,8 +48,15 @@ function _mkurl(ctx::Context, path)
 end
 
 function _request(ctx::Context, method, path; query = nothing, body = UInt8[], kw...)
-    rsp = request(ctx::Context, method, _mkurl(ctx, path); query = query, body = body, kw...)
-    return JSON3.read(rsp.body)
+    try
+        rsp = request(ctx, method, _mkurl(ctx, path); query = query, body = body, kw...)
+        return JSON3.read(rsp.body)
+    catch e
+        if e isa HTTP.ExceptionRequest.StatusError
+            e = HTTPError(e.status, String(e.response.body))
+        end
+        rethrow(e)
+    end
 end
 
 function _delete(ctx::Context, path; body = nothing, kw...)
@@ -59,35 +76,34 @@ function _post(ctx::Context, path; body = nothing, kw...)
 end
 
 function _put(ctx::Context, path; body = nothing, kw...)
-    rsp = request(ctx, "PUT", _mkurl(ctx, path); body = body, kw...)
-    return JSON3.read(rsp.body)
+    return _request(ctx, "PUT", path; body = body, kw...)
 end
 
-function create_engine(ctx::Context, engine::AbstractString, size = nothing; kw...)
+function create_engine(ctx::Context, engine::AbstractString; size = nothing, kw...)
     isnothing(size) && (size = "XS")
-    data = ("region" => ctx.region, "name" => engine, "size" => size)
+    data = Dict("region" => ctx.region, "name" => engine, "size" => size)
     return _put(ctx, PATH_ENGINE; body = JSON3.write(data), kw...)
 end
 
 function create_oauth_client(ctx::Context, name::AbstractString, permissions; kv...)
     isnothing(permissions) && (permissions = [])
-    data = ("name" => name, "permissions" => permissions)
+    data = Dict("name" => name, "permissions" => permissions)
     return _post(ctx, PATH_OAUTH_CLIENTS; body = JSON3.write(data), kv...)
 end
 
 function create_user(ctx::Context, email::AbstractString, roles = nothing; kw...)
     isnothing(roles) && (roles = [])
-    data = ("email" => email, "roles" => roles)
+    data = Dict("email" => email, "roles" => roles)
     return _post(ctx, PATH_USERS; body = JSON3.write(data), kw...)
 end
 
 function delete_database(ctx::Context, database::AbstractString; kw...)
-    data = ("name" => database)
+    data = Dict("name" => database)
     return _delete(ctx, PATH_DATABASE; body = JSON3.write(data), kw...)
 end
 
 function delete_engine(ctx::Context, engine::AbstractString; kw...)
-    data = ("name" => engine)
+    data = Dict("name" => engine)
     return _delete(ctx, PATH_ENGINE; body = JSON3.write(data), kw...)
 end
 
@@ -121,6 +137,7 @@ function get_database(ctx::Context, database::AbstractString; kw...)
     return rsp[1]
 end
 
+# todo: move to rel query
 function get_model(
     ctx::Context,
     database::AbstractString,
@@ -131,7 +148,7 @@ function get_model(
     for model in models
         model["name"] == name && return model["value"]
     end
-    throw(HTTPError(404)).databases
+    throw(HTTPError(404))
 end
 
 function get_oauth_client(ctx::Context, id::AbstractString; kw...)
@@ -320,11 +337,17 @@ function create_database(ctx::Context, database, engine; source = nothing, overw
 end
 
 # Execute the given query string, using any given optioanl query inputs.
+# todo: consider create_transaction
+# todo: consider create_transaction to better align with future transaciton
+#   resource model
 function exec(ctx::Context, database, engine, source; inputs = nothing, readonly = false, kw...)
     tx = Transaction(ctx.region, database, engine, "OPEN"; readonly = readonly)
     data = body(tx, _make_query_action(source, inputs))
     return _post(ctx, PATH_TRANSACTION; query = query(tx), body = data, kw...)
 end
+
+# todo: when we have async transactions, add a variation that dispatches and
+#   waits .. consider creating two entry points for readonly and readwrite.
 
 function list_edbs(ctx::Context, database, engine; kw...)
     tx = Transaction(ctx.region, database, engine, "OPEN"; readonly = true)
@@ -368,7 +391,7 @@ end
 
 function _gen_config(name, value)
     isnothing(value) && return ""
-    return "def config:syntax:$name=$(_gen_literan(v))\n"
+    return "def config:syntax:$name=$(_gen_literal(v))"
 end
 
 function _gen_config(syntax::Dict{String,Any})
@@ -379,6 +402,9 @@ end
 _read_data(d::String) = d
 _read_data(d::IO) = read(d, String)
 
+# todo: need to uniquify config and data so it doesn't conflict with those
+#   names if they already exist in the database.
+# todo: add support for config:path
 function load_csv(
     ctx::Context, database, engine, relation, data;
     header = nothing, header_row = nothing, delim = nothing,
@@ -394,6 +420,8 @@ function load_csv(
     return exec(ctx, database, engine, source; inputs = inputs, readonly = false, kw...)
 end
 
+# todo: need to uniquify config and data
+# todo: add support for config:path
 function load_json(ctx::Context, database, engine, relation, data; kw...)
     inputs = Dict("data" => _read_data(data))
     source += """def config:data = data\n

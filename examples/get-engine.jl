@@ -15,14 +15,22 @@
 # Fetch details of the given engine.
 
 using ArgParse
-using RAI: Context, load_config, get_engine
+using RAI: Context, HTTPError, load_config, get_engine
+
+function run(engine; profile)
+    cfg = load_config(; profile = profile)
+    ctx = Context(cfg)
+    rsp = get_engine(ctx, engine)
+    println(rsp)
+end
 
 s = add_arg_table!(ArgParseSettings(),
     "engine", Dict(:help => "engine name", :required => true),
     "--profile", Dict(:help => "config profile (default: default)"))
 args = parse_args(ARGS, s)
 
-cfg = load_config(; profile = args["profile"])
-ctx = Context(cfg)
-rsp = get_engine(ctx, args["engine"])
-println(rsp)
+try
+    run(args["engine"]; profile = args["profile"])
+catch e
+    e isa HTTPError ? show(e) : rethrow(e)
+end

@@ -16,13 +16,6 @@ using Dates: now
 import HTTP
 import JSON3
 
-struct HTTPError <: Exception
-    status::Int
-    message::String
-    HTTPError(status, message) = new(status, message)
-    HTTPError(status) = new(status, HTTP.statustext(status))
-end
-
 """
     Context
 
@@ -41,6 +34,8 @@ struct Context
     Context(region, scheme, host, port, credentials) =
         new(region, scheme, host, port, credentials)
 
+    # todo: consider use of kwargs like we do in the python SDK
+    #   consider use of @Base.kwdef
     function Context(cfg::Config)
         region = !isnothing(cfg.region) ? cfg.region : "eastus"
         scheme = !isnothing(cfg.scheme) ? cfg.scheme : "https"
@@ -110,6 +105,9 @@ function _authenticate!(
     return nothing
 end
 
+# todo: indicate that this is an RAI specific shadow of HTTP.request
+# todo: consider adding adding as a method on HTTP.request
+# todo: doc that kw... are the HTTP kwargs
 function request(
     ctx::Context, method, url, h = HTTP.Header[], b = UInt8[];
     headers = h, query = nothing, body = b, kw...
