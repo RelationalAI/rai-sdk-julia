@@ -1,4 +1,4 @@
-# Copyright 2022 RelationalAI, Inc.
+# Copyright 2021 RelationalAI, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,24 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-# List all users.
+# Disable the given user.
 
-using RAI: Context, HTTPError, load_config, list_users
+using RAI: Context, HTTPError, load_config, disable_user
 
 include("parseargs.jl")
 
-function run(; profile)
-    conf = load_config(; profile = profile)
-    ctx = Context(conf)
-    rsp = list_users(ctx)
+function run(userid; profile)
+    cfg = load_config(; profile = profile)
+    ctx = Context(cfg)
+    rsp = disable_user(ctx, userid)
     println(rsp)
 end
 
 function main()
-    args = parseargs("--profile", Dict(:help => "config profile (default: default)"))
+    args = parseargs(
+        "userid", Dict(:help => "user id", :required => true),
+        "--profile", Dict(:help => "config profile (default: default)"))
     try
-        run(; profile = args.profile)
-    catch
+        run(args.userid; profile = args.profile)
+    catch e
         e isa HTTPError ? show(e) : rethrow(e)
     end
 end

@@ -38,7 +38,7 @@ function main()
         "email", Dict(:help => "user email", :required => true),
         "--profile", Dict(:help => "config profile (default: default)"))
     try
-        run(args["email"]; profile = args["profile"])
+        run(args.email; profile = args.profile)
     catch
         e isa HTTPError ? show(e) : rethrow(e)
     end

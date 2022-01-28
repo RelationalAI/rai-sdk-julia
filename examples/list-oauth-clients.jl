@@ -28,7 +28,7 @@ end
 function main()
     args = parseargs("--profile", Dict(:help => "config profile (default: default)"))
     try
-        run(; profile = args["profile"])
+        run(; profile = args.profile)
     catch e
         e isa HTTPError ? show(e) : rethrow(e)
     end

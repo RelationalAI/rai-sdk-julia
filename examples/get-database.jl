@@ -30,7 +30,7 @@ function main()
         "database", Dict(:help => "database name", :required => true),
         "--profile", Dict(:help => "config profile (default: default)"))
     try
-        run(args["database"]; profile = args["profile"])
+        run(args.database; profile = args.profile)
     catch e
         e isa HTTPError ? show(e) : rethrow(e)
     end

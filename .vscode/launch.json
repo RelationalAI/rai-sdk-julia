@@ -8,13 +8,11 @@
             "type": "julia",
             "request": "launch",
             "name": "Run tst.jl",
-            "program": "${workspaceFolder}/examples/delete-engine.jl",
+            "program": "${workspaceFolder}/examples/list-databases.jl",
             "stopOnEntry": false,
             "cwd": "${workspaceFolder}",
             "juliaEnv": "${command:activeJuliaEnvironment}",
-            "args": [
-                "bradlo-test"
-            ]
+            "args": []
         },
         {
             "type": "julia",

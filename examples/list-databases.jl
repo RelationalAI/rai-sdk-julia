@@ -30,9 +30,9 @@ function main()
         "--state", Dict(:help => "state filter (default: nothing)"),
         "--profile", Dict(:help => "config profile (default: default)"))
     try
-        run(; state = args["state"], profile = args["profile"])
+        run(; state = args.state, profile = args.profile)
     catch e
-        e isa HTTError ? show(e) : rethrow(e)
+        e isa HTTPError ? show(e) : rethrow(e)
     end
 end
 

@@ -38,7 +38,7 @@ function main()
         "--size", Dict(:help => "engine size (default: XS"),
         "--profile", Dict(:help => "config profile (default: default)"))
     try
-        run(args["engine"], args["size"]; profile = args["profile"])
+        run(args.engine, args.size; profile = args.profile)
     catch e
         e isa HTTPError ? show(e) : rethrow(e)
     end

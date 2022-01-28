@@ -1,4 +1,4 @@
-# Copyright 2022 RelationalAI, Inc.
+# Copyright 2021 RelationalAI, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,24 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-# List all users.
+# Create a user with an (optional) role.
 
-using RAI: Context, HTTPError, load_config, list_users
+using RAI: Context, HTTPError, load_config, create_user
 
 include("parseargs.jl")
 
-function run(; profile)
-    conf = load_config(; profile = profile)
-    ctx = Context(conf)
-    rsp = list_users(ctx)
+function run(name, roles; profile)
+    cfg = load_config(profile = profile)
+    ctx = Context(cfg)
+    rsp = create_user(ctx, name, roles)
     println(rsp)
 end
 
 function main()
-    args = parseargs("--profile", Dict(:help => "config profile (default: default)"))
+    args = parseargs(
+        "name", Dict(:help => "OAuth client name"),
+        "--roles", Dict(:help => "user roles (default: user)", :nargs => '*'),
+        "--profile", Dict(:help => "config profile (default: default)"))
     try
-        run(; profile = args.profile)
-    catch
+        run(args.name, args.roles; profile = args.profile)
+    catch e
         e isa HTTPError ? show(e) : rethrow(e)
     end
 end

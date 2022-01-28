@@ -13,10 +13,19 @@
 # limitations under the License.
 
 using ArgParse: ArgName, ArgParseSettings, add_arg_table!, parse_args
+using Base: getproperty
 
-# A simple wrapper for ArgParse.parse_args
+struct Args
+    __args__::Dict{String,Any}
+end
+
+function Base.getproperty(args::Args, name::Symbol)
+    return getfield(args, :__args__)[String(name)]
+end
+
 function parseargs(table::Union{ArgName,Vector,Dict}...)
     s = ArgParseSettings()
     add_arg_table!(s, table...)
-    return parse_args(ARGS, s)
+    args = parse_args(ARGS, s)
+    return Args(args)
 end

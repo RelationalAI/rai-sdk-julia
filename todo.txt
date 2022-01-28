@@ -1,5 +1,9 @@
 # todo
 
+## api.jl
+
+* do we now have delete_user?
+
 ## rest.jl
 
 * implement get_access_token_func callback
