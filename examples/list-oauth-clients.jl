@@ -14,14 +14,24 @@
 
 # List all OAuth clients.
 
-using ArgParse
-using RAI: Context, load_config, list_oauth_clients
+using RAI: Context, HTTPError, load_config, list_oauth_clients
 
-s = add_arg_table!(ArgParseSettings(),
-    "--profile", Dict(:help => "config profile (default: default)"))
-args = parse_args(ARGS, s)
+include("parseargs.jl")
 
-conf = load_config(; profile = args["profile"])
-ctx = Context(conf)
-rsp = list_oauth_clients(ctx)
-println(rsp)
+function run(; profile)
+    conf = load_config(; profile = profile)
+    ctx = Context(conf)
+    rsp = list_oauth_clients(ctx)
+    println(rsp)
+end
+
+function main()
+    args = parseargs("--profile", Dict(:help => "config profile (default: default)"))
+    try
+        run(; profile = args["profile"])
+    catch e
+        e isa HTTPError ? show(e) : rethrow(e)
+    end
+end
+
+main()

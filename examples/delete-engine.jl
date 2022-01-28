@@ -14,8 +14,9 @@
 
 # Delete an engine.
 
-using ArgParse
 using RAI: Context, HTTPError, load_config, delete_engine, get_engine
+
+include("parseargs.jl")
 
 # Answers if the given value represents a terminal state.
 is_term_state(state) = state == "DELETED" || occursin("FAILED", state)
@@ -31,13 +32,15 @@ function run(engine; profile)
     println(rsp)
 end
 
-s = add_arg_table!(ArgParseSettings(),
-    "engine", Dict(:help => "engine name", :required => true),
-    "--profile", Dict(:help => "config profile (default: default)"))
-args = parse_args(ARGS, s)
-
-try
-    run(args["engine"]; profile = args["profile"])
-catch e
-    e isa HTTPError ? show(e) : rethrow(e)
+function main()
+    args = parseargs(
+        "engine", Dict(:help => "engine name", :required => true),
+        "--profile", Dict(:help => "config profile (default: default)"))
+    try
+        run(args["engine"]; profile = args["profile"])
+    catch e
+        e isa HTTPError ? show(e) : rethrow(e)
+    end
 end
+
+main()

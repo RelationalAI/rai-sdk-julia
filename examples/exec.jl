@@ -14,18 +14,29 @@
 
 # Exeecute the given query string.
 
-using ArgParse
-using RAI: Context, load_config, exec
+using RAI: Context, HTTPError, load_config, exec
 
-s = add_arg_table!(ArgParseSettings(),
-    "database", Dict(:help => "database name"),
-    "engine", Dict(:help => "engine name"),
-    "command", Dict(:help => "rel source string"),
-    "--readonly", Dict(:help => "readonly query (default: false)", :action => "store_true"),
-    "--profile", Dict(:help => "config profile (default: default)"))
-args = parse_args(ARGS, s)
+include("parseargs.jl")
 
-conf = load_config(; profile = args["profile"])
-ctx = Context(conf)
-rsp = exec(ctx, args["database"], args["engine"], args["command"])
-println(rsp)
+function run(database, engine, command; profile)
+    conf = load_config(; profile = profile)
+    ctx = Context(conf)
+    rsp = exec(ctx, database, engine, command)
+    println(rsp)
+end
+
+function main()
+    args = parseargs(
+        "database", Dict(:help => "database name"),
+        "engine", Dict(:help => "engine name"),
+        "command", Dict(:help => "rel source string"),
+        "--readonly", Dict(:help => "readonly query (default: false)", :action => "store_true"),
+        "--profile", Dict(:help => "config profile (default: default)"))
+    try
+        run(args["database"], args["engine"], args["command"]; profile = args["profile"])
+    catch e
+        e isa HTTPError ? show(e) : rethrow(e)
+    end
+end
+
+main()

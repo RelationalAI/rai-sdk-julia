@@ -14,16 +14,27 @@
 
 # List the models installed in the given database
 
-using ArgParse
 using RAI: Context, load_config, list_models
 
-s = add_arg_table!(ArgParseSettings(),
-    "database", Dict(:help => "database name", :required => true),
-    "engine", Dict(:help => "engine name", :required => true),
-    "--profile", Dict(:help => "config profile (default: default)"))
-args = parse_args(ARGS, s)
+include("parseargs.jl")
 
-cfg = load_config(; profile = args["profile"])
-ctx = Context(cfg)
-rsp = list_models(ctx, args["database"], args["engine"])
-println(rsp)
+function run(database, engine; profile)
+    cfg = load_config(; profile = profile)
+    ctx = Context(cfg)
+    rsp = list_models(ctx, database, engine)
+    println(rsp)
+end
+
+function main()
+    args = parseargs(
+        "database", Dict(:help => "database name", :required => true),
+        "engine", Dict(:help => "engine name", :required => true),
+        "--profile", Dict(:help => "config profile (default: default)"))
+    try
+        run(args["database"], args["engine"]; profile = args["profile"])
+    catch e
+        e isa HTTPError ? show(e) : rethrow(e)
+    end
+end
+
+main()

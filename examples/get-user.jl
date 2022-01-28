@@ -14,15 +14,26 @@
 
 # Fetch details for the given user.
 
-using ArgParse
-using RAI: Context, load_config, get_user
+using RAI: Context, HTTPError, load_config, get_user
 
-s = add_arg_table!(ArgParseSettings(),
-    "userid", Dict(:help => "user id", :required => true),
-    "--profile", Dict(:help => "config profile (default: default)"))
-args = parse_args(ARGS, s)
+include("parseargs.jl")
 
-cfg = load_config(; profile = args["profile"])
-ctx = Context(cfg)
-rsp = get_user(ctx, args["userid"])
-println(rsp)
+function run(userid; profile)
+    cfg = load_config(; profile = profile)
+    ctx = Context(cfg)
+    rsp = get_user(ctx, userid)
+    println(rsp)
+end
+
+function main()
+    args = parseargs(
+        "userid", Dict(:help => "user id", :required => true),
+        "--profile", Dict(:help => "config profile (default: default)"))
+    try
+        run(args["userid"]; profile = args["profile"])
+    catch e
+        e isa HTTPError ? show(e) : rethrow(e)
+    end
+end
+
+main()

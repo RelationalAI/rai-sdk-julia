@@ -14,8 +14,9 @@
 
 # Get the userid corresponding to the given user email.
 
-using ArgParse
 using RAI: Context, load_config, list_users
+
+include("parseargs.jl")
 
 function get_userid(ctx, email)
     rsp = list_users(ctx)
@@ -25,12 +26,22 @@ function get_userid(ctx, email)
     return nothing
 end
 
-s = add_arg_table!(ArgParseSettings(),
-    "email", Dict(:help => "user email", :required => true),
-    "--profile", Dict(:help => "config profile (default: default)"))
-args = parse_args(ARGS, s)
+function run(email; profile)
+    cfg = load_config(; profile = profile)
+    ctx = Context(cfg)
+    rsp = get_userid(ctx, email)
+    println(rsp)
+end
 
-cfg = load_config(; profile = args["profile"])
-ctx = Context(cfg)
-rsp = get_userid(ctx, args["email"])
-println(rsp)
+function main()
+    args = parseargs(
+        "email", Dict(:help => "user email", :required => true),
+        "--profile", Dict(:help => "config profile (default: default)"))
+    try
+        run(args["email"]; profile = args["profile"])
+    catch
+        e isa HTTPError ? show(e) : rethrow(e)
+    end
+end
+
+main()

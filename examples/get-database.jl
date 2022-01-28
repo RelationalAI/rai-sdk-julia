@@ -12,17 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-# Fetch details of the given database.
+# Fetch details for the given database.
 
-using ArgParse
-using RAI: Context, load_config, get_database
+using RAI: Context, HTTPError, load_config, get_database
 
-s = add_arg_table!(ArgParseSettings(),
-    "database", Dict(:help => "database name", :required => true),
-    "--profile", Dict(:help => "config profile (default: default)"))
-args = parse_args(ARGS, s)
+include("parseargs.jl")
 
-cfg = load_config(; profile=args["profile"])
-ctx = Context(cfg)
-rsp = get_database(ctx, args["database"])
-println(rsp)
+function run(database; profile)
+    cfg = load_config(; profile = profile)
+    ctx = Context(cfg)
+    rsp = get_database(ctx, database)
+    println(rsp)
+end
+
+function main()
+    args = parseargs(
+        "database", Dict(:help => "database name", :required => true),
+        "--profile", Dict(:help => "config profile (default: default)"))
+    try
+        run(args["database"]; profile = args["profile"])
+    catch e
+        e isa HTTPError ? show(e) : rethrow(e)
+    end
+end
+
+main()

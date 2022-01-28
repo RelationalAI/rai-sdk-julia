@@ -14,8 +14,9 @@
 
 # Create an engine with an optional size.
 
-using ArgParse
 using RAI: Context, HTTPError, load_config, create_engine, get_engine
+
+include("parseargs.jl")
 
 # Answers if the given value represents a terminal state.
 is_term_state(state) = state == "PROVISIONED" || occursin("FAILED", state)
@@ -31,14 +32,16 @@ function run(engine, size; profile)
     println(rsp)
 end
 
-s = add_arg_table!(ArgParseSettings(),
-    "engine", Dict(:help => "engine name", :required => true),
-    "--size", Dict(:help => "engine size (default: XS"),
-    "--profile", Dict(:help => "config profile (default: default)"))
-args = parse_args(ARGS, s)
-
-try
-    run(args["engine"], args["size"]; profile = args["profile"])
-catch e
-    e isa HTTPError ? show(e) : rethrow(e)
+function main()
+    args = parseargs(
+        "engine", Dict(:help => "engine name", :required => true),
+        "--size", Dict(:help => "engine size (default: XS"),
+        "--profile", Dict(:help => "config profile (default: default)"))
+    try
+        run(args["engine"], args["size"]; profile = args["profile"])
+    catch e
+        e isa HTTPError ? show(e) : rethrow(e)
+    end
 end
+
+main()

@@ -14,15 +14,26 @@
 
 # List engines, optionally filtered by state.
 
-using ArgParse
 using RAI: Context, load_config, list_engines
 
-s = add_arg_table!(ArgParseSettings(),
-    "--state", Dict(:help => "state filter (default: nothing)"),
-    "--profile", Dict(:help => "config profile (default: default)"))
-args = parse_args(ARGS, s)
+include("parseargs.jl")
 
-conf = load_config(; profile = args["profile"])
-ctx = Context(conf)
-rsp = list_engines(ctx; state = args["state"])
-println(rsp)
+function run(; state, profile)
+    conf = load_config(; profile = profile)
+    ctx = Context(conf)
+    rsp = list_engines(ctx; state = state)
+    println(rsp)
+end
+
+function main()
+    args = parseargs(
+        "--state", Dict(:help => "state filter (default: nothing)"),
+        "--profile", Dict(:help => "config profile (default: default)"))
+    try
+        run(; state = args["state"], profile = args["profile"])
+    catch e
+        e isa HTTPError ? show(e) : rethrow(e)
+    end
+end
+
+main()

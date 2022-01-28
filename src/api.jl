@@ -330,7 +330,9 @@ function _reltype(_::AbstractString)
     return "RAI_VariableSizeStrings.VariableSizeString"
 end
 
-function create_database(ctx::Context, database, engine; source = nothing, overwrite = false, kw...)
+function create_database(
+    ctx::Context, database, engine; source = nothing, overwrite = false, kw...
+)
     mode = _create_mode(source, overwrite)
     tx = Transaction(ctx.region, database, engine, mode; source = source)
     return _post(ctx, PATH_TRANSACTION; query = query(tx), body = body(tx), kw...)
