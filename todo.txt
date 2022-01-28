@@ -3,6 +3,7 @@
 ## api.jl
 
 * do we now have delete_user?
+* should load/delete_model take multiple args? or should we have multi-arg variants?
 
 ## rest.jl
 

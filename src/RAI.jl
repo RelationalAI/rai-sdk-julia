@@ -41,6 +41,12 @@ export
     list_engines
 
 export
+    delete_model,
+    get_model,
+    list_models,
+    load_model
+
+export
     create_oauth_client,
     delete_oauth_client,
     get_oauth_client,
@@ -61,10 +67,8 @@ export
 
 export
     exec,
-    get_model,
-    install_model,
-    load_csv,
     list_edbs,
+    load_csv,
     load_json
 
 include("creds.jl")

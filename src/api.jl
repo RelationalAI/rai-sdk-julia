@@ -107,6 +107,12 @@ function delete_engine(ctx::Context, engine::AbstractString; kw...)
     return _delete(ctx, PATH_ENGINE; body = JSON3.write(data), kw...)
 end
 
+function delete_model(ctx::Context, database::AbstractString, engine::AbstractString, model::AbstractString; kw...)
+    tx = Transaction(ctx.region, database, engine, "OPEN"; readonly = false)
+    actions = [_make_delete_models_action([model])]
+    return _post(ctx, PATH_TRANSACTION; query = query(tx), body = body(tx, actions...), kw...)
+end
+
 function delete_oauth_client(ctx::Context, id::AbstractString; kw...)
     return _delete(ctx, _mkpath(PATH_OAUTH_CLIENTS, id); kw...)
 end
@@ -138,12 +144,7 @@ function get_database(ctx::Context, database::AbstractString; kw...)
 end
 
 # todo: move to rel query
-function get_model(
-    ctx::Context,
-    database::AbstractString,
-    engine::AbstractString,
-    name::AbstractString; kw...
-)
+function get_model(ctx::Context, database::AbstractString, engine::AbstractString, name::AbstractString; kw...)
     models = _list_models(ctx, database, engine; kw...)
     for model in models
         model["name"] == name && return model["value"]
@@ -267,7 +268,7 @@ function _make_delete_models_action(models::Vector)
         "delete_source" => models)
 end
 
-function _make_install_model_action(name, model)
+function _make_load_model_action(name, model)
     return Dict(
         "type" => "InstallAction",
         "sources" => [_make_query_source(name, model)])
@@ -330,9 +331,7 @@ function _reltype(_::AbstractString)
     return "RAI_VariableSizeStrings.VariableSizeString"
 end
 
-function create_database(
-    ctx::Context, database, engine; source = nothing, overwrite = false, kw...
-)
+function create_database(ctx::Context, database::AbstractString, engine::AbstractString; source = nothing, overwrite = false, kw...)
     mode = _create_mode(source, overwrite)
     tx = Transaction(ctx.region, database, engine, mode; source = source)
     return _post(ctx, PATH_TRANSACTION; query = query(tx), body = body(tx), kw...)
@@ -342,7 +341,7 @@ end
 # todo: consider create_transaction
 # todo: consider create_transaction to better align with future transaciton
 #   resource model
-function exec(ctx::Context, database, engine, source; inputs = nothing, readonly = false, kw...)
+function exec(ctx::Context, database::AbstractString, engine::AbstractString, source::AbstractString; inputs = nothing, readonly = false, kw...)
     tx = Transaction(ctx.region, database, engine, "OPEN"; readonly = readonly)
     data = body(tx, _make_query_action(source, inputs))
     return _post(ctx, PATH_TRANSACTION; query = query(tx), body = data, kw...)
@@ -351,7 +350,7 @@ end
 # todo: when we have async transactions, add a variation that dispatches and
 #   waits .. consider creating two entry points for readonly and readwrite.
 
-function list_edbs(ctx::Context, database, engine; kw...)
+function list_edbs(ctx::Context, database::AbstractString, engine::AbstractString; kw...)
     tx = Transaction(ctx.region, database, engine, "OPEN"; readonly = true)
     data = body(tx, _make_list_edb_action())
     rsp = _post(ctx, PATH_TRANSACTION; query = query(tx), body = data, kw...)
@@ -424,9 +423,15 @@ end
 
 # todo: need to uniquify config and data
 # todo: add support for config:path
-function load_json(ctx::Context, database, engine, relation, data; kw...)
+function load_json(ctx::Context, database::AbstractString, engine::AbstractString, relation::AbstractString, data; kw...)
     inputs = Dict("data" => _read_data(data))
     source += """def config:data = data\n
                  def insert:$relation = load_json[config]"""
     return exec(ctx, database, engine, source; inputs = inputs, readonly = false, kw...)
+end
+
+function load_model(ctx::Context, database::AbstractString, engine::AbstractString, models::Dict; kw...)
+    tx = Transaction(ctx.region, database, engine, "OPEN"; readonly = false)
+    actions = [_make_load_model_action(name, model) for (name, model) in models]
+    return _post(ctx, PATH_TRANSACTION; query = query(tx), body = body(tx, actions...), kw...)
 end
