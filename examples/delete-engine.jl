@@ -37,7 +37,7 @@ function main()
         "engine", Dict(:help => "engine name", :required => true),
         "--profile", Dict(:help => "config profile (default: default)"))
     try
-        run(args["engine"]; profile = args["profile"])
+        run(args.engine; profile = args.profile)
     catch e
         e isa HTTPError ? show(e) : rethrow(e)
     end
