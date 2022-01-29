@@ -13,7 +13,7 @@
 # limitations under the License
 
 # Clone an existing database by creating a new database and setting the
-# optional `source` argument to the name of the database to clone."""
+# optional `source` argument to the name of the database to clone.
 
 using RAI: Context, HTTPError, load_config, create_database, get_database
 

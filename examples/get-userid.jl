@@ -14,7 +14,7 @@
 
 # Get the userid corresponding to the given user email.
 
-using RAI: Context, load_config, list_users
+using RAI: Context, HTTPError, load_config, list_users
 
 include("parseargs.jl")
 

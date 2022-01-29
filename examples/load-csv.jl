@@ -1,4 +1,4 @@
-# Copyright 2021 RelationalAI, Inc.
+# Copyright 2022 RelationalAI, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -37,7 +37,9 @@ function main()
         "database", Dict(:help => "database name", :required => true),
         "engine", Dict(:help => "engine name", :required => true),
         "file", Dict(:help => "source file", :required => true),
-        "--header-row", Dict(:help => "header row number, 0 for no header (default: 1)"),
+        "--header-row", Dict(
+            :help => "header row number, 0 for no header (default: 1)",
+            :arg_type => Int),
         "--delim", Dict(:help => "field delimiter"),
         "--escapechar", Dict(:help => "character used to escape quotes"),
         "--quotechar", Dict(:help => "quoted field character"),

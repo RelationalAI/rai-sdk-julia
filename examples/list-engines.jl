@@ -14,7 +14,7 @@
 
 # List engines, optionally filtered by state.
 
-using RAI: Context, load_config, list_engines
+using RAI: Context, HTTPError, load_config, list_engines
 
 include("parseargs.jl")
 

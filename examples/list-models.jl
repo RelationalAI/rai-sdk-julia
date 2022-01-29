@@ -14,7 +14,7 @@
 
 # List the models installed in the given database
 
-using RAI: Context, load_config, list_models
+using RAI: Context, HTTPError, load_config, list_models
 
 include("parseargs.jl")
 

@@ -12,25 +12,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-# Delete an OAuth client.
+# Get the OAuth clientid corresponding to the given client name.
 
-using RAI: Context, HTTPError, load_config, delete_oauth_client
+using RAI: Context, HTTPError, load_config, list_oauth_clients
 
 include("parseargs.jl")
 
-function run(id; profile)
+function get_clientid(ctx, name)
+    rsp = list_oauth_clients(ctx)
+    for item in rsp
+        item["name"] == name && return item["id"]
+    end
+    return nothing
+end
+
+function run(name; profile)
     cfg = load_config(; profile = profile)
     ctx = Context(cfg)
-    rsp = delete_oauth_client(ctx, id)
+    rsp = get_clientid(ctx, name)
     println(rsp)
 end
 
 function main()
     args = parseargs(
-        "id", Dict(:help => "OAuth client id", :required => true),
+        "name", Dict(:help => "client name", :required => true),
         "--profile", Dict(:help => "config profile (default: default)"))
     try
-        run(args.id; profile = args.profile)
+        run(args.name; profile = args.profile)
     catch e
         e isa HTTPError ? show(e) : rethrow(e)
     end

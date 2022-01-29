@@ -346,7 +346,6 @@ function exec(ctx::Context, database::AbstractString, engine::AbstractString, so
     data = body(tx, _make_query_action(source, inputs))
     return _post(ctx, PATH_TRANSACTION; query = query(tx), body = data, kw...)
 end
-
 # todo: when we have async transactions, add a variation that dispatches and
 #   waits .. consider creating two entry points for readonly and readwrite.
 
@@ -375,6 +374,10 @@ function _gen_literal(value::Bool)
     return "$value"
 end
 
+function _gen_literal(value::Int)
+    return "$value"
+end
+
 function _gen_literal(value::String)
     s = replace(value, "'" => "\\'")
     return "'$s'"
@@ -392,12 +395,17 @@ end
 
 function _gen_config(name, value)
     isnothing(value) && return ""
-    return "def config:syntax:$name=$(_gen_literal(v))"
+    return "def config:syntax:$name=$(_gen_literal(value))"
 end
 
 function _gen_config(syntax::Dict)
+    length(syntax) == 0 && return ""
     items = [_gen_config(k, v) for (k, v) in syntax if !isnothing(v)]
-    return join(items, "\n")
+    return join(items, '\n') * '\n'
+end
+
+function _gen_config(::Nothing)
+    return ""
 end
 
 _read_data(d::String) = d
@@ -413,13 +421,14 @@ function load_csv(
 )
     inputs = Dict("data" => _read_data(data))
     syntax = Dict{String,String}()
-    !isnothing(header) && (syntax["delim"] = delim)
-    !isnothing(header) && (syntax["header"] = header)
-    !isnothing(header) && (syntax["header_row"] = header_row)
-    !isnothing(header) && (syntax["escapechar"] = escapechar)
-    !isnothing(header) && (syntax["quotechar"] = quotechar)
+    syntax = _filter(
+        "delim" => delim,
+        "header" => header,
+        "header_row" => header_row,
+        "escapechar" => escapechar,
+        "quotechar" => quotechar)
     source = _gen_config(syntax)
-    source *= """def config:data = data\n
+    source *= """def config:data = data
                  def insert:$relation = load_csv[config]"""
     return exec(ctx, database, engine, source; inputs = inputs, readonly = false, kw...)
 end

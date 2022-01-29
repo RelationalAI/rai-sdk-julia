@@ -1,3 +1,100 @@
 #!/bin/bash
 
-julia --project=.. $* 2>&1
+set -ex
+
+JULIA="julia --project=.."
+ENGINE=sdk-test-xs
+DATABASE=sdk-test
+DATABASECLONE=$DATABASE-clone
+
+# setup
+$JULIA ./delete-database.jl $DATABASECLONE
+$JULIA ./delete-database.jl $DATABASE
+$JULIA ./delete-engine.jl $ENGINE
+CLIENTID=`$JULIA ./get-oauth-clientid.jl sdk-test`
+$JULIA ./delete-oauth-client.jl $CLIENTID
+
+# engines
+$JULIA ./create-engine.jl $ENGINE --size=XS
+$JULIA ./list-engines.jl
+$JULIA ./list-engines.jl --state=PROVISIONED
+$JULIA ./get-engine.jl $ENGINE
+
+# databases
+$JULIA ./create-database.jl $DATABASE $ENGINE --overwrite
+$JULIA ./list-databases.jl
+$JULIA ./list-databases.jl --state=CREATED
+$JULIA ./get-database.jl $DATABASE
+$JULIA ./list-models.jl $DATABASE $ENGINE
+$JULIA ./list-edbs.jl $DATABASE $ENGINE
+
+# exec
+QUERY="x, x^2, x^3, x^4 from x in {1; 2; 3; 4; 5}"
+$JULIA ./exec.jl $DATABASE $ENGINE "$QUERY"
+$JULIA ./exec.jl $DATABASE $ENGINE "$QUERY" --readonly
+$JULIA ./show-results.jl $DATABASE $ENGINE
+$JULIA ./show-problems.jl $DATABASE $ENGINE
+
+# load model
+$JULIA ./load-model.jl $DATABASE $ENGINE hello.rel
+$JULIA ./list-models.jl $DATABASE $ENGINE
+$JULIA ./get-model.jl $DATABASE $ENGINE hello
+$JULIA ./list-edbs.jl $DATABASE $ENGINE
+
+# load-csv
+$JULIA ./load-csv.jl $DATABASE $ENGINE sample.csv -r sample_csv
+$JULIA ./exec.jl $DATABASE $ENGINE sample_csv
+$JULIA ./load-csv.jl $DATABASE $ENGINE sample_no_header.csv --header-row=0 -r sample_no_header_csv
+$JULIA ./exec.jl $DATABASE $ENGINE sample_no_header_csv
+$JULIA ./load-csv.jl $DATABASE $ENGINE sample_alt_syntax.csv --delim="|" --quotechar="'" -r sample_alt_syntax_csv
+$JULIA ./exec.jl $DATABASE $ENGINE sample_alt_syntax_csv
+$JULIA ./list-edbs.jl $DATABASE $ENGINE
+
+# load-json
+$JULIA ./load-json.jl $DATABASE $ENGINE sample.json -r sample_json
+$JULIA ./exec.jl $DATABASE $ENGINE sample_json
+$JULIA ./list-edbs.jl $DATABASE $ENGINE
+
+# clone database
+$JULIA ./clone-database.jl $DATABASECLONE $ENGINE $DATABASE
+$JULIA ./list-databases.jl
+$JULIA ./list-databases.jl --state=CREATED
+$JULIA ./get-database.jl $DATABASECLONE
+$JULIA ./list-models.jl $DATABASECLONE $ENGINE
+$JULIA ./list-edbs.jl $DATABASECLONE $ENGINE
+$JULIA ./get-model.jl $DATABASECLONE $ENGINE hello
+
+# delete model
+$JULIA ./list-models.jl $DATABASE $ENGINE
+$JULIA ./delete-model.jl $DATABASE $ENGINE hello
+$JULIA ./list-models.jl $DATABASE $ENGINE
+$JULIA ./list-edbs.jl $DATABASE $ENGINE
+
+# oauth-clients
+$JULIA ./create-oauth-client.jl sdk-test
+CLIENTID=`$JULIA ./get-oauth-clientid.jl sdk-test`
+$JULIA ./list-oauth-clients.jl
+$JULIA ./get-oauth-client.jl $CLIENTID
+$JULIA ./delete-oauth-client.jl $CLIENTID
+
+# users
+EMAIL=sdktest@relational.ai
+$JULIA ./list-users.jl
+$JULIA ./create-user.jl $EMAIL
+$JULIA ./get-userid.jl $EMAIL
+USERID=`$JULIA ./get-userid.jl $EMAIL`
+$JULIA get-user.jl $USERID
+$JULIA disable-user.jl $USERID
+$JULIA enable-user.jl $USERID
+$JULIA update-user.jl $USERID --status=INACTIVE
+$JULIA update-user.jl $USERID --status=ACTIVE
+$JULIA update-user.jl $USERID --roles=admin user
+$JULIA update-user.jl $USERID --status=INACTIVE --roles=user
+$JULIA update-user.jl $USERID
+
+# cleanup
+$JULIA ./delete-database.jl $DATABASECLONE
+$JULIA ./delete-database.jl $DATABASE
+$JULIA ./delete-engine.jl $ENGINE
+CLIENTID=`$JULIA ./get-oauth-clientid.jl sdk-test`
+$JULIA ./delete-oauth-client.jl $CLIENTID
