@@ -30,9 +30,9 @@ struct HTTPError <: Exception
     HTTPError(status_code, details) = new(status_code, HTTP.statustext(status_code), details)
 end
 
-# Returns a `Dict` constructed from the given pairs, skipping pairs where
+# Returns a `Dict` constructed from the given pairs, filtering out pairs where
 # the value is `nothing`.
-function _mkdict(pairs::Pair...)
+function _filter(pairs::Pair...)
     d = Dict((k => v) for (k, v) in pairs if !isnothing(v))
     return length(d) > 0 ? d : nothing
 end
@@ -161,12 +161,12 @@ function get_user(ctx::Context, userid::AbstractString; kw...)
 end
 
 function list_databases(ctx::Context; state = nothing, kw...)
-    query = _mkdict("state" => state)
+    query = _filter("state" => state)
     return _get(ctx, PATH_DATABASE; query = query, kw...).databases
 end
 
 function list_engines(ctx::Context; state = nothing, kw...)
-    query = _mkdict("state" => state)
+    query = _filter("state" => state)
     return _get(ctx, PATH_ENGINE; query = query, kw...).computes
 end
 
@@ -179,7 +179,7 @@ function list_users(ctx::Context; kw...)
 end
 
 function update_user(ctx::Context, userid::AbstractString; status = nothing, roles = nothing, kw...)
-    data = _mkdict("status" => status, "roles" => roles)
+    data = _filter("status" => status, "roles" => roles)
     return _patch(ctx, _mkpath(PATH_USERS, userid); body = JSON3.write(data), kw...)
 end
 
@@ -217,7 +217,7 @@ end
 
 # Returns the serialized request body for the given transaction.
 function body(tx::Transaction, actions...)::String
-    data = _mkdict(
+    data = _filter(
         "type" => "Transaction",
         "dbname" => tx.database,
         "mode" => !isnothing(tx.mode) ? tx.mode : "OPEN",
@@ -233,7 +233,7 @@ end
 
 # Returns the request query params for the given transaction.
 function query(tx::Transaction)
-    return _mkdict(
+    return _filter(
         "dbname" => tx.database,
         "compute_name" => tx.engine,
         "open_mode" => tx.mode,
@@ -395,7 +395,7 @@ function _gen_config(name, value)
     return "def config:syntax:$name=$(_gen_literal(v))"
 end
 
-function _gen_config(syntax::Dict{String,Any})
+function _gen_config(syntax::Dict)
     items = [_gen_config(k, v) for (k, v) in syntax if !isnothing(v)]
     return join(items, "\n")
 end
@@ -408,24 +408,28 @@ _read_data(d::IO) = read(d, String)
 # todo: add support for config:path
 function load_csv(
     ctx::Context, database, engine, relation, data;
-    header = nothing, header_row = nothing, delim = nothing,
-    quotechar = nothing, escapechar = nothing, kw...
+    delim = nothing, header = nothing, header_row = nothing,
+    escapechar = nothing, quotechar = nothing, kw...
 )
     inputs = Dict("data" => _read_data(data))
-    syntax = Dict(
-        "header" => header, "header_row" => header_row, "delim" => delim,
-        "quotechar" => quotechar, "escapechar" => escapechar)
+    syntax = Dict{String,String}()
+    !isnothing(header) && (syntax["delim"] = delim)
+    !isnothing(header) && (syntax["header"] = header)
+    !isnothing(header) && (syntax["header_row"] = header_row)
+    !isnothing(header) && (syntax["escapechar"] = escapechar)
+    !isnothing(header) && (syntax["quotechar"] = quotechar)
     source = _gen_config(syntax)
-    source += """def config:data = data\n
+    source *= """def config:data = data\n
                  def insert:$relation = load_csv[config]"""
     return exec(ctx, database, engine, source; inputs = inputs, readonly = false, kw...)
 end
 
 # todo: need to uniquify config and data
 # todo: add support for config:path
+# todo: data should be string or io
 function load_json(ctx::Context, database::AbstractString, engine::AbstractString, relation::AbstractString, data; kw...)
     inputs = Dict("data" => _read_data(data))
-    source += """def config:data = data\n
+    source = """def config:data = data\n
                  def insert:$relation = load_json[config]"""
     return exec(ctx, database, engine, source; inputs = inputs, readonly = false, kw...)
 end

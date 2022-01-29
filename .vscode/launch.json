@@ -8,11 +8,15 @@
             "type": "julia",
             "request": "launch",
             "name": "Run tst.jl",
-            "program": "${workspaceFolder}/examples/list-databases.jl",
+            "program": "${workspaceFolder}/examples/load-csv.jl",
             "stopOnEntry": false,
             "cwd": "${workspaceFolder}",
             "juliaEnv": "${command:activeJuliaEnvironment}",
-            "args": []
+            "args": [
+                "bradlo-test",
+                "bradlo-test",
+                "examples/sample.csv"
+            ]
         },
         {
             "type": "julia",

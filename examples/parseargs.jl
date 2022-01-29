@@ -19,6 +19,10 @@ struct Args
     __args__::Dict{String,Any}
 end
 
+function Base.getindex(args::Args, key::String)
+    return getfield(args, :__args__)[key]
+end
+
 function Base.getproperty(args::Args, name::Symbol)
     return getfield(args, :__args__)[String(name)]
 end

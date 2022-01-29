@@ -71,6 +71,11 @@ export
     load_csv,
     load_json
 
+export
+    show,
+    show_problems,
+    show_results
+
 include("creds.jl")
 include("config.jl")
 include("rest.jl")

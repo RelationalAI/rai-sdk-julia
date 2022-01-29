@@ -1,0 +1,199 @@
+JSON3.Object[{
+             "id": "auth0|61f3692515e6030069f8d80e",
+          "email": "sdk-test@relationalai.com",
+   "account_name": "relationalai-team-rd-ux",
+         "status": "ACTIVE",
+          "roles": [
+                     "user"
+                   ],
+   "id_providers": [
+                     "google-apps"
+                   ]
+}, {
+             "id": "auth0|60e89dae5308090068fff9ed",
+          "email": "nikolas.goebel@relational.ai",
+   "account_name": "relationalai-team-rd-ux",
+         "status": "ACTIVE",
+          "roles": [
+                     "user"
+                   ],
+   "id_providers": [
+                     "google-apps"
+                   ]
+}, {
+             "id": "auth0|60ec43adfc5e9b006bac6c3b",
+          "email": "denis.gursky@relational.ai",
+   "account_name": "relationalai-team-rd-ux",
+         "status": "ACTIVE",
+          "roles": [
+                     "admin"
+                   ],
+   "id_providers": [
+                     "google-apps"
+                   ]
+}, {
+             "id": "auth0|61d3a7e982367f0068227029",
+          "email": "ilian.alexiev@relational.ai",
+   "account_name": "relationalai-team-rd-ux",
+         "status": "ACTIVE",
+          "roles": [
+                     "admin"
+                   ],
+   "id_providers": [
+                     "google-apps"
+                   ]
+}, {
+             "id": "auth0|61afa901740383007108cb27",
+          "email": "raitest@relational.ai",
+   "account_name": "relationalai-team-rd-ux",
+         "status": "INACTIVE",
+          "roles": [
+                     "user"
+                   ],
+   "id_providers": [
+                     "google-apps"
+                   ]
+}, {
+             "id": "auth0|61b7a9a127ef570073fe5569",
+          "email": "sdktest@relational.ai",
+   "account_name": "relationalai-team-rd-ux",
+         "status": "INACTIVE",
+          "roles": [
+                     "user"
+                   ],
+   "id_providers": [
+                     "google-apps"
+                   ]
+}, {
+             "id": "auth0|61af8f303248c800702fcdba",
+          "email": "bradlo@test.com",
+   "account_name": "relationalai-team-rd-ux",
+         "status": "INACTIVE",
+          "roles": [
+                     "user"
+                   ],
+   "id_providers": [
+                     "google-apps"
+                   ]
+}, {
+             "id": "auth0|60e8992b21224b0078ac4e8a",
+          "email": "trevor.paddock@relational.ai",
+   "account_name": "relationalai-team-rd-ux",
+         "status": "ACTIVE",
+          "roles": [
+                     "admin"
+                   ],
+   "id_providers": [
+                     "google-apps"
+                   ]
+}, {
+             "id": "auth0|60e8783562831c00692f3849",
+          "email": "nathan.daly@relational.ai",
+   "account_name": "relationalai-team-rd-ux",
+         "status": "ACTIVE",
+          "roles": [
+                     "user"
+                   ],
+   "id_providers": [
+                     "google-apps"
+                   ]
+}, {
+             "id": "auth0|60e888e212f736006ae4ad71",
+          "email": "brad.lovering@relational.ai",
+   "account_name": "relationalai-team-rd-ux",
+         "status": "ACTIVE",
+          "roles": [
+                     "admin"
+                   ],
+   "id_providers": [
+                     "google-apps"
+                   ]
+}, {
+             "id": "auth0|60e739f3447860006997f6d8",
+          "email": "rob.bearman@relational.ai",
+   "account_name": "relationalai-team-rd-ux",
+         "status": "ACTIVE",
+          "roles": [
+                     "admin"
+                   ],
+   "id_providers": [
+                     "google-apps"
+                   ]
+}, {
+             "id": "auth0|60fedf612454f2006a236d0b",
+          "email": "rob.vermaas@relational.ai",
+   "account_name": "relationalai-team-rd-ux",
+         "status": "ACTIVE",
+          "roles": [
+                     "user"
+                   ],
+   "id_providers": [
+                     "google-apps"
+                   ]
+}, {
+             "id": "auth0|61812a76396c2d0069194696",
+          "email": "noor.shamasneh@relational.ai",
+   "account_name": "relationalai-team-rd-ux",
+         "status": "ACTIVE",
+          "roles": [
+                     "admin"
+                   ],
+   "id_providers": [
+                     "google-apps"
+                   ]
+}, {
+             "id": "auth0|60e87887484ea6007059d211",
+          "email": "meher.assel@relational.ai",
+   "account_name": "relationalai-team-rd-ux",
+         "status": "ACTIVE",
+          "roles": [
+                     "user"
+                   ],
+   "id_providers": [
+                     "google-apps"
+                   ]
+}, {
+             "id": "auth0|60e58bb864244200711c30ae",
+          "email": "george.kollias@relational.ai",
+   "account_name": "relationalai-team-rd-ux",
+         "status": "ACTIVE",
+          "roles": [
+                     "user"
+                   ],
+   "id_providers": [
+                     "google-apps"
+                   ]
+}, {
+             "id": "auth0|60e8993321224b0078ac4e8f",
+          "email": "mary.mcgrath@relational.ai",
+   "account_name": "relationalai-team-rd-ux",
+         "status": "ACTIVE",
+          "roles": [
+                     "user"
+                   ],
+   "id_providers": [
+                     "google-apps"
+                   ]
+}, {
+             "id": "auth0|60f5cbac610a760069ec7582",
+          "email": "kevin.lynagh@relational.ai",
+   "account_name": "relationalai-team-rd-ux",
+         "status": "ACTIVE",
+          "roles": [
+                     "user"
+                   ],
+   "id_providers": [
+                     "google-apps"
+                   ]
+}, {
+             "id": "auth0|60e8992f161a820068ea1f7f",
+          "email": "david.bach@relational.ai",
+   "account_name": "relationalai-team-rd-ux",
+         "status": "ACTIVE",
+          "roles": [
+                     "user"
+                   ],
+   "id_providers": [
+                     "google-apps"
+                   ]
+}]

@@ -4,6 +4,7 @@
 
 * do we now have delete_user?
 * should load/delete_model take multiple args? or should we have multi-arg variants?
+* load_* functions should all take data as string or io
 
 ## rest.jl
 
@@ -11,4 +12,5 @@
 
 ## exaples
 
-delete-engine.jl returns 404 when engine is gone, should not report that error
+* delete-engine.jl returns 404 when engine is gone because we are polling
+  w/get-engine .. should not report that error

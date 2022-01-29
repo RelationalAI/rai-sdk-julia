@@ -17,7 +17,38 @@ import JSON3
 
 function Base.show(io::IO, e::HTTPError)
     println(io, "$(e.status_code) $(e.status_text)")
-    if !isnothing(e.details)
+    isnothing(e.details) && return
+    try
         println(io, JSON3.read(e.details))
+    catch
+        println(io, e.details)
     end
 end
+
+"""
+    show_problems([io::IO], rsp)
+
+Print the problems associated with the given response `rsp` to the output
+stream `io`.
+"""
+function show_problems(io::IO, rsp)
+    isnothing(rsp) && return
+    problems = get(rsp, "problems", nothing)
+    isnothing(problems) && return
+    for problem in problems
+        if get(problem, "is_error", false)
+            kind = "error"
+        elseif get(problem, "is_exception", false)
+            kind = "exception"
+        else
+            kind = "warning"  # ?
+        end
+        println(io, "$kind: $(problem["message"])")
+        report = get(problem, "report", nothing)
+        isnothing(report) && continue
+        println(io, strip(report))
+    end
+    return nothing
+end
+
+show_problems(rsp) = show_problems(stdout::IO, rsp)
