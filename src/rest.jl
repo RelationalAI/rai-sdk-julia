@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Low level HTTP interface to the RAI REST API. Handles authentication of
+# requests and other protocol level details.
+
 using Dates: now
 import HTTP
 import JSON3

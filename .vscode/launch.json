@@ -7,15 +7,14 @@
         {
             "type": "julia",
             "request": "launch",
-            "name": "Run tst.jl",
-            "program": "${workspaceFolder}/examples/load-csv.jl",
+            "name": "Run example",
+            "program": "${workspaceFolder}/examples/show-results.jl",
             "stopOnEntry": false,
             "cwd": "${workspaceFolder}",
             "juliaEnv": "${command:activeJuliaEnvironment}",
             "args": [
                 "bradlo-test",
-                "bradlo-test",
-                "examples/sample.csv"
+                "bradlo-test"
             ]
         },
         {

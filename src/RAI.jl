@@ -72,14 +72,14 @@ export
     load_json
 
 export
-    show,
-    show_problems,
-    show_results
+    Result,
+    show_problems
 
 include("creds.jl")
 include("config.jl")
 include("rest.jl")
 include("api.jl")
+include("tables.jl")
 include("show.jl")
 
 end

@@ -12,7 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# todo: writeup notes on philosophy of delegating as much as possible to server
+# The primary API level interface to the RAI REST API. These entry points
+# provide convient Juilia language bindings to the corresponding opeartions,
+# but a minimum of additional functionality. The purpose is to present service
+# functionality as direclty as possible, but in a way that is natural for the
+# Julia language.
 
 import JSON3
 
@@ -28,6 +32,16 @@ struct HTTPError <: Exception
     details::Union{String,Nothing}
     HTTPError(status_code) = new(status_code, HTTP.statustext(status_code), nothing)
     HTTPError(status_code, details) = new(status_code, HTTP.statustext(status_code), details)
+end
+
+function Base.show(io::IO, e::HTTPError)
+    println(io, "$(e.status_code) $(e.status_text)")
+    isnothing(e.details) && return
+    try
+        println(io, JSON3.read(e.details))
+    catch
+        println(io, e.details)
+    end
 end
 
 # Returns a `Dict` constructed from the given pairs, filtering out pairs where
@@ -341,7 +355,8 @@ end
 # todo: consider create_transaction
 # todo: consider create_transaction to better align with future transaciton
 #   resource model
-function exec(ctx::Context, database::AbstractString, engine::AbstractString, source::AbstractString; inputs = nothing, readonly = false, kw...)
+function exec(ctx::Context, database::AbstractString, engine::AbstractString, source; inputs = nothing, readonly = false, kw...)
+    source isa IO && (source = read(source, String))
     tx = Transaction(ctx.region, database, engine, "OPEN"; readonly = readonly)
     data = body(tx, _make_query_action(source, inputs))
     return _post(ctx, PATH_TRANSACTION; query = query(tx), body = data, kw...)

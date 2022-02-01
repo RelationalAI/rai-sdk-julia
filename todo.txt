@@ -2,6 +2,8 @@
 
 ## api.jl
 
+* move to engineless database creation
+* migrate remaining actions to Rel queries
 * do we now have delete_user?
 * should load/delete_model take multiple args? or should we have multi-arg variants?
 * load_* functions should all take data as string or io

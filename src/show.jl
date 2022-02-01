@@ -12,18 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import Base: show
 import JSON3
-
-function Base.show(io::IO, e::HTTPError)
-    println(io, "$(e.status_code) $(e.status_text)")
-    isnothing(e.details) && return
-    try
-        println(io, JSON3.read(e.details))
-    catch
-        println(io, e.details)
-    end
-end
 
 """
     show_problems([io::IO], rsp)
@@ -51,4 +40,4 @@ function show_problems(io::IO, rsp)
     return nothing
 end
 
-show_problems(rsp) = show_problems(stdout::IO, rsp)
+show_problems(rsp) = show_problems(stdout, rsp)

@@ -1,4 +1,4 @@
-# Copyright 2021 RelationalAI, Inc.
+# Copyright 2022 RelationalAI, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,19 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-# `show_results` pringts the results of a transaction to the console.
+using RAI: Context, HTTPError, load_config, exec
 
-#def run(database: str, engine: str, profile: str):
-#    cfg = config.read(profile=profile)
-#    ctx = api.Context(**cfg)
-#    rsp = api.query(ctx, database, engine, "def output = 'a'; 'b'; 'c'")
-#    show.results(rsp)
+include("parseargs.jl")
 
-#if __name__ == "__main__":
-#    p = ArgumentParser()
-#    p.add_argument("database", type=str, help="database name")
-#    p.add_argument("engine", type=str, help="engine name")
-#    p.add_argument("-p", "--profile", type=str,
-#                   help="profile name", default="default")
-#    args = p.parse_args()
-#    run(args.database, args.engine, args.profile)
+function run(database, engine; profile)
+    conf = load_config(; profile = profile)
+    ctx = Context(conf)
+    source = "x, x^2, x^3, x^4 from x in {1; 2; 3; 4; 5}"
+    rsp = exec(ctx, database, engine, source)
+    println(rsp)
+end
+
+function main()
+    args = parseargs(
+        "database", Dict(:help => "database name", :required => true),
+        "engine", Dict(:help => "engine name", :required => true),
+        "--profile", Dict(:help => "config profile (default: default)"))
+    try
+        run(args.database, args.engine; profile = args.profile)
+    catch e
+        e isa HTTPError ? show(e) : rethrow(e)
+    end
+end
+
+main()

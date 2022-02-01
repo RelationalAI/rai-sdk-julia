@@ -7,6 +7,7 @@ ENGINE=sdk-test-xs
 DATABASE=sdk-test
 DATABASECLONE=$DATABASE-clone
 
+if false; then
 # setup
 $JULIA ./delete-database.jl $DATABASECLONE
 $JULIA ./delete-database.jl $DATABASE
@@ -34,6 +35,7 @@ $JULIA ./exec.jl $DATABASE $ENGINE "$QUERY"
 $JULIA ./exec.jl $DATABASE $ENGINE "$QUERY" --readonly
 $JULIA ./show-results.jl $DATABASE $ENGINE
 $JULIA ./show-problems.jl $DATABASE $ENGINE
+fi
 
 # load model
 $JULIA ./load-model.jl $DATABASE $ENGINE hello.rel
