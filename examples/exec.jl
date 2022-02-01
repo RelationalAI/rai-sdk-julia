@@ -18,22 +18,30 @@ using RAI: Context, HTTPError, load_config, exec
 
 include("parseargs.jl")
 
-function run(database, engine, command; profile)
+function run(database, engine, source; profile)
     conf = load_config(; profile = profile)
     ctx = Context(conf)
-    rsp = exec(ctx, database, engine, command)
+    rsp = exec(ctx, database, engine, source)
     println(rsp)
 end
 
 function main()
     args = parseargs(
-        "database", Dict(:help => "database name"),
-        "engine", Dict(:help => "engine name"),
+        "database", Dict(:help => "database name", :required => true),
+        "engine", Dict(:help => "engine name", :required => true),
         "command", Dict(:help => "rel source string"),
+        ["--file", "-f"], Dict(:help => "rel source file"),
         "--readonly", Dict(:help => "readonly query (default: false)", :action => "store_true"),
         "--profile", Dict(:help => "config profile (default: default)"))
     try
-        run(args.database, args.engine, args.command; profile = args.profile)
+        source = nothing
+        if !isnothing(args.command)
+            source = args.command
+        elseif !isnothing(args.file)
+            source = open(args.file, "r")
+        end
+        isnothing(source) && return  # nothing to execute
+        run(args.database, args.engine, source; profile = args.profile)
     catch e
         e isa HTTPError ? show(e) : rethrow(e)
     end
