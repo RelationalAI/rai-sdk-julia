@@ -12,16 +12,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-using RAI: Context, HTTPError, load_config, exec
+# There are several ways to display transaction results in a friendly way:
+#
+#     show_result(rsp)
+#
+# .. which is equivalent to:
+#
+#     show(TransactionResult(rsp))
+#
+# .. or, if you want to navigate the relations explicitly:
+#
+#     for relation in result.relations
+#         show(relation)
+#     end
+
+using RAI: Context, HTTPError, exec, load_config, show_result
 
 include("parseargs.jl")
+
+const source = """
+def output = 
+    :drink, "martini", 2, 12.50, "2020-01-01";
+    :drink, "sazerac", 4, 14.25, "2020-02-02";
+    :drink, "cosmopolitan", 4, 11.00, "2020-03-03";
+    :drink, "bellini", 3, 12.25, "2020-04-04"
+"""
 
 function run(database, engine; profile)
     conf = load_config(; profile = profile)
     ctx = Context(conf)
-    source = "x, x^2, x^3, x^4 from x in {1; 2; 3; 4; 5}"
     rsp = exec(ctx, database, engine, source)
-    println(rsp)
+    show_result(rsp)
 end
 
 function main()

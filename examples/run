@@ -32,7 +32,7 @@ $JULIA ./list-edbs.jl $DATABASE $ENGINE
 QUERY="x, x^2, x^3, x^4 from x in {1; 2; 3; 4; 5}"
 $JULIA ./exec.jl $DATABASE $ENGINE "$QUERY"
 $JULIA ./exec.jl $DATABASE $ENGINE "$QUERY" --readonly
-$JULIA ./show-results.jl $DATABASE $ENGINE
+$JULIA ./show-result.jl $DATABASE $ENGINE
 $JULIA ./show-problems.jl $DATABASE $ENGINE
 
 # load model

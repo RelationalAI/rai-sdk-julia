@@ -24,8 +24,7 @@ function _sansext(fullname)
 end
 
 function run(database, engine, fullname; profile)
-    f = open(fullname, "r")
-    models = Dict(_sansext(fullname) => read(f, String))
+    models = Dict(_sansext(fullname) => read(fullname, String))
     cfg = load_config(; profile = profile)
     ctx = Context(cfg)
     rsp = load_model(ctx, database, engine, models)

@@ -78,13 +78,13 @@ export
     getcolumn,
     getrow,
     schema,
-    show_problems
+    show_problems,
+    show_result
 
 include("creds.jl")
 include("config.jl")
 include("rest.jl")
 include("api.jl")
 include("results.jl")
-include("show.jl")
 
 end

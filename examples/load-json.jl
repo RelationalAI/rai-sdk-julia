@@ -25,7 +25,7 @@ end
 
 function run(database, engine, relation, fullname; profile)
     isnothing(relation) && (relation = _sansext(fullname))
-    data = open(f -> read(f, String), fullname)
+    data = read(fullname, String)
     cfg = load_config(; profile = profile)
     ctx = Context(cfg)
     rsp = load_json(ctx, database, engine, relation, data)

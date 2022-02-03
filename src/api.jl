@@ -385,12 +385,13 @@ function list_models(ctx::Context, database::AbstractString, engine::AbstractStr
     return [model["name"] for model in models]
 end
 
-function _gen_literal(value::Bool)
+function _gen_literal(value)
     return "$value"
 end
 
-function _gen_literal(value::Int)
-    return "$value"
+function _gen_literal(value::Dict)
+    items = ["$(_gen_literal(v)),$(_gen_literal(k))" for (k, v) in value]
+    return "{" + join(items, ";") + "}"
 end
 
 function _gen_literal(value::String)
@@ -398,10 +399,7 @@ function _gen_literal(value::String)
     return "'$s'"
 end
 
-function _gen_literal(value::Dict)
-    items = ["$(_gen_literal(v)),$(_gen_literal(k))" for (k, v) in value]
-    return "{" + join(items, ";") + "}"
-end
+_gen_literal(value::Symbol) = ":$value"
 
 function _gen_literal(value::Vector)
     items = [_gen_literal(item) for item in value]
@@ -419,9 +417,7 @@ function _gen_config(syntax::Dict)
     return join(items, '\n') * '\n'
 end
 
-function _gen_config(::Nothing)
-    return ""
-end
+_gen_config(::Nothing) = ""
 
 _read_data(d::String) = d
 _read_data(d::IO) = read(d, String)

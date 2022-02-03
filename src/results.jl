@@ -32,6 +32,51 @@ function Base.getproperty(result::TransactionResult, name::Symbol)
     return data[name]
 end
 
+function Base.show(io::IO, result::TransactionResult)
+    if result.aborted
+        println(io, "aborted")
+        return nothing
+    end
+    count = 0
+    for relation in result.relations
+        if relation.name == "abort" && length(schema(relation)) == 0
+            continue  # ignore ic results
+        end
+        count > 1 && println(io)
+        show(io, relation)
+        count += 1
+    end
+    show_problems(result.problems)
+end
+
+"""
+    show_problems([io::IO], rsp)
+
+Print the problems associated with the given transaction response to the output
+stream `io`.
+"""
+function show_problems(io::IO, problems)
+    isnothing(problems) && return
+    for problem in problems
+        if get(problem, "is_error", false)
+            kind = "error: "
+        elseif get(problem, "is_exception", false)
+            kind = "exception: "
+        else
+            kind = ""
+        end
+        println(io, "$kind$(problem["message"])")
+        report = get(problem, "report", nothing)
+        isnothing(report) && continue
+        println(io, strip(report))
+    end
+    return nothing
+end
+
+show_problems(rsp) = show_problems(stdout, rsp)
+show_result(io::IO, rsp::JSON3.Object) = show(io, TransactionResult(rsp))
+show_result(rsp::JSON3.Object) = show(stdout, TransactionResult(rsp))
+
 struct Relations
     _data::JSON3.Array
 end
@@ -97,6 +142,8 @@ Base.eltype(_::Relation) = RelRow
 Base.getindex(relation::Relation, key::Int) = getrow(relation, key)
 
 function Base.getproperty(relation::Relation, name::Symbol)
+    data = _data(relation)
+    name == :name && return data.rel_key.name
     return _data(relation)[name]
 end
 
@@ -113,6 +160,19 @@ end
 
 function getrow(relation::Relation, row::Int)::Tuple
     return _getrow(relation)(row)
+end
+
+function Base.show(io::IO, relation::Relation)
+    types = ["$item" for item in schema(relation)]
+    sig = join(types, "/")
+    println(io, "# $sig")
+    for (i, row) in enumerate(relation)
+        i > 1 && println(io, ";")
+        values = [_gen_literal(item) for item in row]
+        print(io, join(values, ", "))
+    end
+    println(io)
+    return nothing
 end
 
 schema(relation::Relation) = _types(relation)
