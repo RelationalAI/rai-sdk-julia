@@ -122,9 +122,9 @@ _names(relation::Relation) = getfield(relation, :_names)
 _types(relation::Relation) = getfield(relation, :_types)
 _getrow(relation::Relation) = getfield(relation, :_getrow)
 
-# Returns a getrow functions that returns the requested row number as a
-# `Tuple` of values. This function "lowers" symbols from type space to
-# symbolic values in the corresponding position in value space.
+# Returns a getrow lambda function that returns the requested row number as a
+# `Tuple` of values. This function "lowers" symbols from type space to values
+# in the corresponding position in the tuple.
 function _make_getrow(relkey, columns)
     col = 1
     getters = []
