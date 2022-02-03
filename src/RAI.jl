@@ -27,7 +27,8 @@ export
     ClientCredentials,
     Config,
     Context,
-    HTTPError
+    HTTPError,
+    load_config
 
 export
     create_database,

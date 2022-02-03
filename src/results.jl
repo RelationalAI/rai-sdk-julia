@@ -46,8 +46,11 @@ function Base.show(io::IO, result::TransactionResult)
         show(io, relation)
         count += 1
     end
-    show_problems(result.problems)
+    show_problems(result)
 end
+
+show_result(io::IO, rsp::JSON3.Object) = show(io, TransactionResult(rsp))
+show_result(rsp::JSON3.Object) = show(stdout, TransactionResult(rsp))
 
 """
     show_problems([io::IO], rsp)
@@ -55,9 +58,12 @@ end
 Print the problems associated with the given transaction response to the output
 stream `io`.
 """
-function show_problems(io::IO, problems)
-    isnothing(problems) && return
-    for problem in problems
+function show_problems(io::IO, rsp::JSON3.Object)
+    isnothing(rsp) && return nothing
+    @assert rsp.type == "TransactionResult"
+    problems = rsp.problems
+    isnothing(problems) && return nothing
+    for (i, problem) in enumerate(problems)
         if get(problem, "is_error", false)
             kind = "error: "
         elseif get(problem, "is_exception", false)
@@ -65,7 +71,8 @@ function show_problems(io::IO, problems)
         else
             kind = ""
         end
-        println(io, "$kind$(problem["message"])")
+        i > 1 && println(io)
+        println(io, "$kind$(problem.message)")
         report = get(problem, "report", nothing)
         isnothing(report) && continue
         println(io, strip(report))
@@ -73,9 +80,9 @@ function show_problems(io::IO, problems)
     return nothing
 end
 
-show_problems(rsp) = show_problems(stdout, rsp)
-show_result(io::IO, rsp::JSON3.Object) = show(io, TransactionResult(rsp))
-show_result(rsp::JSON3.Object) = show(stdout, TransactionResult(rsp))
+show_problems(rsp::JSON3.Object) = show_problems(stdout, rsp)
+show_problems(result::TransactionResult) = show_problems(_data(result))
+show_problems(io::IO, result::TransactionResult) = show_problems(io, _data(result))
 
 struct Relations
     _data::JSON3.Array
@@ -165,7 +172,7 @@ end
 function Base.show(io::IO, relation::Relation)
     types = ["$item" for item in schema(relation)]
     sig = join(types, "/")
-    println(io, "# $sig")
+    println(io, "// $(relation.name) $sig")
     for (i, row) in enumerate(relation)
         i > 1 && println(io, ";")
         values = [_gen_literal(item) for item in row]

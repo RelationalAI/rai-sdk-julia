@@ -14,7 +14,7 @@
 
 # Exeecute the given query string.
 
-using RAI: Context, HTTPError, load_config, exec
+using RAI: Context, HTTPError, exec, load_config, show_result
 
 include("parseargs.jl")
 
@@ -22,7 +22,7 @@ function run(database, engine, source; profile)
     conf = load_config(; profile = profile)
     ctx = Context(conf)
     rsp = exec(ctx, database, engine, source)
-    println(rsp)
+    show_result(rsp)
 end
 
 function main()
