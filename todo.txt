@@ -1,5 +1,10 @@
 # todo
 
+## results.jl
+
+* implement AbstractColumn and Tables.AccessStyle(..) ==
+* investigate https://github.com/JuliaData/TableOperations.jl
+
 ## api.jl
 
 * move to engineless database creation
@@ -14,5 +19,6 @@
 
 ## exaples
 
+* data = read(open(filename), String) => data = read(filename, String)
 * delete-engine.jl returns 404 when engine is gone because we are polling
   w/get-engine .. should not report that error

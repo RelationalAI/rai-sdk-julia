@@ -2,4 +2,5 @@
 .DS_Store
 Manifest.toml
 tst.*
+startup.jl
 yyy

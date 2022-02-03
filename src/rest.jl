@@ -108,9 +108,7 @@ function _authenticate!(
     return nothing
 end
 
-# todo: indicate that this is an RAI specific shadow of HTTP.request
-# todo: consider adding adding as a method on HTTP.request
-# todo: doc that kw... are the HTTP kwargs
+# Note, this function is deliberately patterend on the HTTP.jl request funciton.
 function request(
     ctx::Context, method, url, h = HTTP.Header[], b = UInt8[];
     headers = h, query = nothing, body = b, kw...

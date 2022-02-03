@@ -26,7 +26,8 @@ export
     AccessToken,
     ClientCredentials,
     Config,
-    Context
+    Context,
+    HTTPError
 
 export
     create_database,
@@ -72,14 +73,18 @@ export
     load_json
 
 export
-    Result,
+    Relation,
+    TransactionResult,
+    getcolumn,
+    getrow,
+    schema,
     show_problems
 
 include("creds.jl")
 include("config.jl")
 include("rest.jl")
 include("api.jl")
-include("tables.jl")
+include("results.jl")
 include("show.jl")
 
 end

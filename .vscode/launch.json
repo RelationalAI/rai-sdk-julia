@@ -8,14 +8,11 @@
             "type": "julia",
             "request": "launch",
             "name": "Run example",
-            "program": "${workspaceFolder}/examples/show-results.jl",
+            "program": "${workspaceFolder}/teset/runtests.jl",
             "stopOnEntry": false,
             "cwd": "${workspaceFolder}",
             "juliaEnv": "${command:activeJuliaEnvironment}",
-            "args": [
-                "bradlo-test",
-                "bradlo-test"
-            ]
+            "args": []
         },
         {
             "type": "julia",
