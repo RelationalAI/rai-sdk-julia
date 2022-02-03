@@ -450,7 +450,7 @@ end
 function load_json(ctx::Context, database::AbstractString, engine::AbstractString, relation::AbstractString, data; kw...)
     inputs = Dict("data" => _read_data(data))
     source = """def config:data = data\n
-                 def insert:$relation = load_json[config]"""
+                def insert:$relation = load_json[config]"""
     return exec(ctx, database, engine, source; inputs = inputs, readonly = false, kw...)
 end
 
