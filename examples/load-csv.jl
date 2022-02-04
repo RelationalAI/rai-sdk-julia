@@ -14,7 +14,7 @@
 
 # Load a CSV file into the given database with the given relation name.
 
-using RAI: Context, HTTPError, TransactionResult, load_config, load_csv
+using RAI: Context, HTTPError, load_config, load_csv
 
 include("parseargs.jl")
 
@@ -30,7 +30,6 @@ function run(database, engine, relation, fullname; profile, kw...)
     ctx = Context(cfg)
     rsp = load_csv(ctx, database, engine, relation, data; kw...)
     println(rsp)
-    show(TransactionResult(rsp))
 end
 
 function main()
