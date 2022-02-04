@@ -40,7 +40,7 @@ struct Context
     # todo: consider use of kwargs like we do in the python SDK
     #   consider use of @Base.kwdef
     function Context(cfg::Config)
-        region = !isnothing(cfg.region) ? cfg.region : "eastus"
+        region = !isnothing(cfg.region) ? cfg.region : "us-east"
         scheme = !isnothing(cfg.scheme) ? cfg.scheme : "https"
         host = !isnothing(cfg.host) ? cfg.host : "azure.relationalai.com"
         port = !isnothing(cfg.port) ? cfg.port : "443"
