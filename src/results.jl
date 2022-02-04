@@ -42,7 +42,7 @@ function Base.show(io::IO, result::TransactionResult)
         if relation.name == "abort" && length(schema(relation)) == 0
             continue  # ignore ic results
         end
-        count > 1 && println(io)
+        count > 0 && println(io)
         show(io, relation)
         count += 1
     end
