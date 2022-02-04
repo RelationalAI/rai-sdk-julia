@@ -19,9 +19,7 @@ using RAI: Context, HTTPError, load_config, load_model
 include("parseargs.jl")
 
 # Returns the file name without path and extension.
-function _sansext(fullname)
-    return splitext(splitpath(fullname)[end])[1]
-end
+_sansext(fullname) = first(splitext(last(splitdir(fullname))))
 
 function run(database, engine, fullname; profile)
     models = Dict(_sansext(fullname) => read(fullname, String))
