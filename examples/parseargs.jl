@@ -12,20 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import Base
 using ArgParse: ArgName, ArgParseSettings, add_arg_table!, parse_args
-using Base: getproperty
 
 struct Args
-    __args__::Dict{String,Any}
+    _args::Dict{String,Any}
 end
 
-function Base.getindex(args::Args, key::String)
-    return getfield(args, :__args__)[key]
-end
-
-function Base.getproperty(args::Args, name::Symbol)
-    return getfield(args, :__args__)[String(name)]
-end
+Base.getindex(args::Args, key::String) = getfield(args, :_args)[key]
+Base.getproperty(args::Args, name::Symbol) = getfield(args, :_args)[String(name)]
 
 function parseargs(table::Union{ArgName,Vector,Dict}...)
     s = ArgParseSettings()

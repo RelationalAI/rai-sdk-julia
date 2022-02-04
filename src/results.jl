@@ -196,6 +196,7 @@ const _typemap = Dict{String,DataType}(
     "Float32" => Float32,
     "Float64" => Float64,
     "Hash" => String,      # todo
+    "Missing" => Nothing,
     "Int8" => Int8,
     "Int16" => Int16,
     "Int32" => Int32,

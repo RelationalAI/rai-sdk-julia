@@ -1,6 +1,7 @@
 *.py
 .DS_Store
 Manifest.toml
+run.out
 tst.*
 startup.jl
 yyy
