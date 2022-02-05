@@ -1,5 +1,2 @@
 .DS_Store
 Manifest.toml
-run.out
-startup.jl
-tst.*
