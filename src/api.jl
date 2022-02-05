@@ -69,25 +69,20 @@ function _request(ctx::Context, method, path; query = nothing, body = UInt8[], k
     end
 end
 
-function _delete(ctx::Context, path; body = nothing, kw...)
-    return _request(ctx, "DELETE", path; body = body, kw...)
-end
+_delete(ctx::Context, path; body = nothing, kw...) =
+    _request(ctx, "DELETE", path; body = body, kw...)
 
-function _get(ctx::Context, path; query = nothing, kw...)
-    return _request(ctx, "GET", path; query = query, kw...)
-end
+_get(ctx::Context, path; query = nothing, kw...) =
+    _request(ctx, "GET", path; query = query, kw...)
 
-function _patch(ctx::Context, path; body = nothing, kw...)
-    return _request(ctx, "PATCH", path; body = body, kw...)
-end
+_patch(ctx::Context, path; body = nothing, kw...) =
+    _request(ctx, "PATCH", path; body = body, kw...)
 
-function _post(ctx::Context, path; body = nothing, kw...)
-    return _request(ctx, "POST", path; body = body, kw...)
-end
+_post(ctx::Context, path; body = nothing, kw...) =
+    _request(ctx, "POST", path; body = body, kw...)
 
-function _put(ctx::Context, path; body = nothing, kw...)
-    return _request(ctx, "PUT", path; body = body, kw...)
-end
+_put(ctx::Context, path; body = nothing, kw...) =
+    _request(ctx, "PUT", path; body = body, kw...)
 
 function create_engine(ctx::Context, engine::AbstractString; size = nothing, kw...)
     isnothing(size) && (size = "XS")
@@ -210,19 +205,8 @@ mutable struct Transaction
     source::Union{String,Nothing}
     version::Int
 
-    function Transaction(region, database, engine, mode; source = nothing, readonly = false)
-        tx = new()
-        tx.region = region
-        tx.database = database
-        tx.engine = engine
-        tx.mode = mode
-        tx.abort = false
-        tx.nowait_durable = false
-        tx.readonly = readonly
-        tx.source = source
-        tx.version = 0
-        return tx
-    end
+    Transaction(region, database, engine, mode; source = nothing, readonly = false) =
+        new(region, database, engine, mode, false, false, readonly, source, 0)
 end
 
 # Returns the serialized request body for the given transaction.

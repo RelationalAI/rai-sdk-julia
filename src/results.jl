@@ -145,7 +145,7 @@ function _make_getrow(relkey, columns)
     return row -> Tuple([getter(row) for getter in getters])
 end
 
-Base.eltype(_::Relation) = RelRow
+Base.eltype(::Relation) = RelRow
 Base.getindex(relation::Relation, key::Int) = getrow(relation, key)
 
 function Base.getproperty(relation::Relation, name::Symbol)
@@ -223,8 +223,8 @@ end
 # Implementation of the Tables.jl `AbstractRow` interface.
 
 Tables.columnnames(relation::Relation) = _names(relation)
-Tables.istable(::Type{<:Relation}) = true
-Tables.rowaccess(::Type{<:Relation}) = true
+Tables.istable(::Type{Relation}) = true
+Tables.rowaccess(::Type{Relation}) = true
 Tables.rows(relation::Relation) = relation
 
 function Tables.schema(relation::Relation)

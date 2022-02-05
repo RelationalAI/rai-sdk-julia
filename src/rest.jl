@@ -65,9 +65,9 @@ end
 
 # Ensures that the given headers contain the required values.
 function _ensure_headers!(h::HTTP.Headers = HTTP.Headers())::HTTP.Headers
-    !_haskeyfold(h, "accept") && push!(h, "Accept" => "application/json")
-    !_haskeyfold(h, "content-type") && push!(h, "Content-Type" => "application/json")
-    !_haskeyfold(h, "user-agent") && push!(h, "User-Agent" => _user_agent())
+    _haskeyfold(h, "accept") || push!(h, "Accept" => "application/json")
+    _haskeyfold(h, "content-type") || push!(h, "Content-Type" => "application/json")
+    _haskeyfold(h, "user-agent") || push!(h, "User-Agent" => _user_agent())
     return h
 end
 

@@ -30,13 +30,8 @@ function _load_stanza(fname::AbstractString, profile::AbstractString)
     return ConfParser.retrieve(conf, profile)
 end
 
-# Note, ConfParser returns Dict{String => Vector{T}} (declared as Dict{Any,Any})
-function _get_value(d::Dict, k::String)
-    v = get(d, k, nothing)
-    isnothing(v) && return nothing
-    # todo: if length(v) != 1 .. throw
-    return v[1]
-end
+# Note, ConfParser returns Dict{String => Vector{T}}
+_get_value(d::Dict, k::String) = first(get(d, k, (nothing,)))
 
 function load_config(; fname = nothing, profile = nothing)::Config
     isnothing(fname) && (fname = "~/.rai/config")
