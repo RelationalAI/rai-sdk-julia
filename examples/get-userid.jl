@@ -40,7 +40,7 @@ function main()
     try
         run(args.email; profile = args.profile)
     catch e
-        e isa HTTPError ? show(e) : rethrow(e)
+        e isa HTTPError ? show(e) : rethrow()
     end
 end
 

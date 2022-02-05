@@ -32,7 +32,7 @@ function main()
     try
         run(args.id; profile = args.profile)
     catch e
-        e isa HTTPError ? show(e) : rethrow(e)
+        e isa HTTPError ? show(e) : rethrow()
     end
 end
 

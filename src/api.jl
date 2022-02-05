@@ -51,11 +51,6 @@ function _filter(pairs::Pair...)
     return length(d) > 0 ? d : nothing
 end
 
-# Returns a path constructed from the given segments.
-function _mkpath(parts...)
-    return join(parts, "/")
-end
-
 # Returns a URL constructed from context settings and the given path.
 function _mkurl(ctx::Context, path)
     return "$(ctx.scheme)://$(ctx.host):$(ctx.port)$path"
@@ -67,9 +62,10 @@ function _request(ctx::Context, method, path; query = nothing, body = UInt8[], k
         return JSON3.read(rsp.body)
     catch e
         if e isa HTTP.ExceptionRequest.StatusError
-            e = HTTPError(e.status, String(e.response.body))
+            throw(HTTPError(e.status, String(e.response.body)))
+        else
+            rethrow()
         end
-        rethrow(e)
     end
 end
 
@@ -128,11 +124,11 @@ function delete_model(ctx::Context, database::AbstractString, engine::AbstractSt
 end
 
 function delete_oauth_client(ctx::Context, id::AbstractString; kw...)
-    return _delete(ctx, _mkpath(PATH_OAUTH_CLIENTS, id); kw...)
+    return _delete(ctx, joinpath(PATH_OAUTH_CLIENTS, id); kw...)
 end
 
 function delete_user(ctx::Context, userid::AbstractString; kw...)
-    return _delete(ctx, _mkpath(PATH_USERS, userid); kw...)
+    return _delete(ctx, joinpath(PATH_USERS, userid); kw...)
 end
 
 function disable_user(ctx::Context, userid::AbstractString; kw...)
@@ -153,7 +149,7 @@ end
 function get_database(ctx::Context, database::AbstractString; kw...)
     query = Dict("name" => database)
     rsp = _get(ctx, PATH_DATABASE; query = query, kw...).databases
-    length(rsp) == 0 && throw(HTTPError(404)).databases
+    length(rsp) == 0 && throw(HTTPError(404))
     return rsp[1]
 end
 
@@ -167,11 +163,11 @@ function get_model(ctx::Context, database::AbstractString, engine::AbstractStrin
 end
 
 function get_oauth_client(ctx::Context, id::AbstractString; kw...)
-    return _get(ctx, _mkpath(PATH_OAUTH_CLIENTS, id); kw...).client
+    return _get(ctx, joinpath(PATH_OAUTH_CLIENTS, id); kw...).client
 end
 
 function get_user(ctx::Context, userid::AbstractString; kw...)
-    return _get(ctx, _mkpath(PATH_USERS, userid); kw...).user
+    return _get(ctx, joinpath(PATH_USERS, userid); kw...).user
 end
 
 function list_databases(ctx::Context; state = nothing, kw...)
@@ -194,7 +190,7 @@ end
 
 function update_user(ctx::Context, userid::AbstractString; status = nothing, roles = nothing, kw...)
     data = _filter("status" => status, "roles" => roles)
-    return _patch(ctx, _mkpath(PATH_USERS, userid); body = JSON3.write(data), kw...)
+    return _patch(ctx, joinpath(PATH_USERS, userid); body = JSON3.write(data), kw...)
 end
 
 """
@@ -306,15 +302,11 @@ function _make_query_action(source, ::Nothing)
 end
 
 function _make_query_action(source, inputs::Dict)
-    action_inputs = []
-    for (k, v) in inputs
-        push!(action_inputs, _make_query_action_input(k, v))
-    end
     return Dict(
         "type" => "QueryAction",
         "source" => _make_query_source("query", source),
         "persist" => [],
-        "inputs" => action_inputs,
+        "inputs" => [_make_query_action_input(k, v) for (k, v) in inputs],
         "outputs" => [])
 end
 
@@ -419,7 +411,7 @@ end
 
 _gen_config(::Nothing) = ""
 
-_read_data(d::String) = d
+_read_data(d::AbstractString) = d
 _read_data(d::IO) = read(d, String)
 
 # todo: need to uniquify config and data so it doesn't conflict with those

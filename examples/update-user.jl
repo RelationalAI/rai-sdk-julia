@@ -34,7 +34,7 @@ function main()
     try
         run(args.userid; status = args.status, roles = args.roles, profile = args.profile)
     catch e
-        e isa HTTPError ? show(e) : rethrow(e)
+        e isa HTTPError ? show(e) : rethrow()
     end
 end
 

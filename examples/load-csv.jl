@@ -49,7 +49,7 @@ function main()
             escapechar = args.escapechar, quotechar = args.quotechar,
             profile = args.profile)
     catch e
-        e isa HTTPError ? show(e) : rethrow(e)
+        e isa HTTPError ? show(e) : rethrow()
     end
 end
 

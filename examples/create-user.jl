@@ -33,7 +33,7 @@ function main()
     try
         run(args.name, args.roles; profile = args.profile)
     catch e
-        e isa HTTPError ? show(e) : rethrow(e)
+        e isa HTTPError ? show(e) : rethrow()
     end
 end
 

@@ -31,11 +31,11 @@ function main()
         "database", Dict(:help => "database name", :required => true),
         "engine", Dict(:help => "engine name", :required => true),
         "--profile", Dict(:help => "config profile (default: default)"))
-    run(args.database, args.engine; profile = args.profile)
+    try
+        e isa HTTPError ? show(e) : rethrow()
+    catch e
+        run(args.database, args.engine; profile = args.profile)
+    end
 end
 
-try
-    main()
-catch e
-    e isa HTTPError ? show(e) : rethrow(e)
-end
+main()

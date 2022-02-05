@@ -43,7 +43,7 @@ function main()
         isnothing(source) && return  # nothing to execute
         run(args.database, args.engine, source; profile = args.profile)
     catch e
-        e isa HTTPError ? show(e) : rethrow(e)
+        e isa HTTPError ? show(e) : rethrow()
     end
 end
 

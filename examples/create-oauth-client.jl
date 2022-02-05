@@ -37,7 +37,7 @@ function main()
     try
         run(args.name; permissions = args.permissions, profile = args.profile)
     catch e
-        e isa HTTPError ? show(e) : rethrow(e)
+        e isa HTTPError ? show(e) : rethrow()
     end
 end
 
