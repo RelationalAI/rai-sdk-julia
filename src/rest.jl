@@ -92,7 +92,9 @@ function _get_client_credentials_url(creds::ClientCredentials)
 end
 
 function _authenticate!(ctx::Context, headers::HTTP.Headers)
-    _authenticate!(ctx, ctx.credentials, headers)
+    if !isnothing(ctx.credentials)
+        _authenticate!(ctx, ctx.credentials, headers)
+    end
     return nothing
 end
 
