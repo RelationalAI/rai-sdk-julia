@@ -11,7 +11,7 @@ The RelationalAI (RAI) SDK for Julia enables developers to access the RAI REST A
 The package can be installed from source using the Julia REPL.
 
 ```julia
-julia> using Pkg; Pkg.add("https://github.com/RelationalAI/rai-sdk-julia.git")
+julia> using Pkg; Pkg.add(url="https://github.com/RelationalAI/rai-sdk-julia.git")
 ```
 
 ### Create a configuration file
