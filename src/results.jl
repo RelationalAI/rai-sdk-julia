@@ -126,11 +126,17 @@ _getrow(relation::Relation) = getfield(relation, :_getrow)
 # `Tuple` of values. This function "lowers" symbols from type space to values
 # in the corresponding position in the tuple.
 function _make_getrow(relkey, columns)
+    if columns == [[]]
+        # Special case for when the relation is `true` in rel (only contains `()`):
+        # This means that the relation is _only specialized values_, so we can just return
+        # the specialized values from the relkey directly.
+        return row -> _relname_to_symbol.(Tuple(relkey))
+    end
     col = 1
     getters = []
     for item in relkey
         if startswith(item, ":")  # symbol
-            let sym = Symbol(item[2:end])
+            let sym = _relname_to_symbol(item)
                 push!(getters, _ -> sym)
             end
         else
@@ -140,10 +146,11 @@ function _make_getrow(relkey, columns)
             col += 1
         end
     end
-    @assert col == length(columns) + 1
+    @assert col == length(columns) + 1  "for $relkey: $col != $(length(columns) + 1)"
     @assert length(getters) == length(relkey)
     return row -> Tuple(getter(row) for getter in getters)
 end
+_relname_to_symbol(relname::String) = Symbol(relname[2:end])
 
 Base.eltype(::Relation) = RelRow
 Base.getindex(relation::Relation, key::Int) = getrow(relation, key)
