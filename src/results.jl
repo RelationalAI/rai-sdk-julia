@@ -142,7 +142,7 @@ function _make_getrow(relkey, columns)
     end
     @assert col == length(columns) + 1
     @assert length(getters) == length(relkey)
-    return row -> Tuple([getter(row) for getter in getters])
+    return row -> Tuple(getter(row) for getter in getters)
 end
 
 Base.eltype(::Relation) = RelRow
