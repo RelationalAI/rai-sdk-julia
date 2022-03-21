@@ -18,19 +18,19 @@ using RAI: Context, HTTPError, load_config, disable_user
 
 include("parseargs.jl")
 
-function run(userid; profile)
+function run(id; profile)
     cfg = load_config(; profile = profile)
     ctx = Context(cfg)
-    rsp = disable_user(ctx, userid)
+    rsp = disable_user(ctx, id)
     println(rsp)
 end
 
 function main()
     args = parseargs(
-        "userid", Dict(:help => "user id", :required => true),
+        "id", Dict(:help => "user id", :required => true),
         "--profile", Dict(:help => "config profile (default: default)"))
     try
-        run(args.userid; profile = args.profile)
+        run(args.id; profile = args.profile)
     catch e
         e isa HTTPError ? show(e) : rethrow()
     end

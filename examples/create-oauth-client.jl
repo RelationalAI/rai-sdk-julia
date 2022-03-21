@@ -29,10 +29,7 @@ function main()
     args = parseargs(
         "name", Dict(:help => "OAuth client name"),
         "--permissions", Dict(
-            :help => "OAuth client permissions. By default it will be " *
-                     "assigned the same permissions as the creating entity " *
-                     "(user or OAuth client)",
-            :nargs => '*'),
+            :help => "OAuth client permissions.", :nargs => '*'),
         "--profile", Dict(:help => "config profile (default: default)"))
     try
         run(args.name; permissions = args.permissions, profile = args.profile)

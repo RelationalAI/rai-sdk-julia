@@ -28,8 +28,8 @@ end
 function main()
     args = parseargs(
         "userid", Dict(:help => "user id"),
-        "--status", Dict(:help => "updated user status"),
-        "--roles", Dict(:help => "updated user roles (default: user)", :nargs => '*'),
+        "--status", Dict(:help => "user status"),
+        "--roles", Dict(:help => "user roles (default: user)", :nargs => '*'),
         "--profile", Dict(:help => "config profile (default: default)"))
     try
         run(args.userid; status = args.status, roles = args.roles, profile = args.profile)

@@ -1,11 +1,12 @@
 #!/bin/bash
 
-set -ex
-
 JULIA="julia --project=.."
-ENGINE=sdk-test-xs
+
 DATABASE=sdk-test
 DATABASECLONE=$DATABASE-clone
+ENGINE=sdk-test-xs
+
+set -ex
 
 # setup
 $JULIA ./delete-database.jl $DATABASECLONE

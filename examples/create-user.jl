@@ -18,20 +18,20 @@ using RAI: Context, HTTPError, load_config, create_user
 
 include("parseargs.jl")
 
-function run(name, roles; profile)
+function run(email, roles; profile)
     cfg = load_config(profile = profile)
     ctx = Context(cfg)
-    rsp = create_user(ctx, name, roles)
+    rsp = create_user(ctx, email, roles)
     println(rsp)
 end
 
 function main()
     args = parseargs(
-        "name", Dict(:help => "OAuth client name"),
+        "email", Dict(:help => "user email"),
         "--roles", Dict(:help => "user roles (default: user)", :nargs => '*'),
         "--profile", Dict(:help => "config profile (default: default)"))
     try
-        run(args.name, args.roles; profile = args.profile)
+        run(args.email, args.roles; profile = args.profile)
     catch e
         e isa HTTPError ? show(e) : rethrow()
     end

@@ -56,7 +56,16 @@ function _mkurl(ctx::Context, path)
     return "$(ctx.scheme)://$(ctx.host):$(ctx.port)$path"
 end
 
+function _print_request(method, path, query, body)
+    println("$method $path") 
+    !isnothing(query) && for (k, v) in query
+        println("$k: $v")
+    end
+    !isnothing(body) && println(String(body))
+end
+
 function _request(ctx::Context, method, path; query = nothing, body = UInt8[], kw...)
+    # _print_request(method, path, query, body);
     try
         rsp = request(ctx, method, _mkurl(ctx, path); query = query, body = body, kw...)
         return JSON3.read(rsp.body)
@@ -280,7 +289,7 @@ function _make_query_action(source, ::Nothing)
     return Dict(
         "type" => "QueryAction",
         "source" => _make_query_source("query", source),
-        "persist" => [],
+        "persist" => [], # todo: remove
         "inputs" => [],
         "outputs" => [])
 end
@@ -289,7 +298,7 @@ function _make_query_action(source, inputs::Dict)
     return Dict(
         "type" => "QueryAction",
         "source" => _make_query_source("query", source),
-        "persist" => [],
+        "persist" => [], # todo: remove
         "inputs" => [_make_query_action_input(k, v) for (k, v) in inputs],
         "outputs" => [])
 end
