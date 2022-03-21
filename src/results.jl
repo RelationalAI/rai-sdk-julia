@@ -26,7 +26,16 @@ _data(result::TransactionResult) = getfield(result, :_data)
 
 Base.getindex(result::TransactionResult, key) = _data(result)[key]
 
+function Base.propertynames(result::TransactionResult, private::Bool=false)
+    data = _data(result)
+    names = (keys(data)..., :relations)
+    if private
+        names = (names..., fieldnames(TransactionResult)...)
+    end
+    return names
+end
 function Base.getproperty(result::TransactionResult, name::Symbol)
+    name in fieldnames(TransactionResult) && return getfield(result, name)
     data = _data(result)
     name == :relations && return Relations(data.output)
     return data[name]
@@ -155,7 +164,16 @@ _relname_to_symbol(relname::String) = Symbol(relname[2:end])
 Base.eltype(::Relation) = RelRow
 Base.getindex(relation::Relation, key::Int) = getrow(relation, key)
 
+function Base.propertynames(relation::Relation, private::Bool=false)
+    data = _data(relation)
+    names = (keys(data)..., :name)
+    if private
+        names = (names..., fieldnames(Relation)...)
+    end
+    return names
+end
 function Base.getproperty(relation::Relation, name::Symbol)
+    name in fieldnames(Relation) && return getfield(result, name)
     data = _data(relation)
     name == :name && return data.rel_key.name
     return _data(relation)[name]
@@ -254,6 +272,9 @@ _indexof(row, name) = findfirst(==(name), _names(row))
 
 Base.getindex(row::RelRow, key::Int) = _values(row)[key]
 
+function Base.propertynames(row::RelRow)
+    return (_names(row)..., fieldnames(RelRow))
+end
 function Base.getproperty(row::RelRow, name::Symbol)
     name in _names(row) && return getcolumn(row, name)
     return getfield(row, name)
