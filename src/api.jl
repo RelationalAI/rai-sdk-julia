@@ -24,6 +24,7 @@ const PATH_DATABASE = "/database"
 const PATH_ENGINE = "/compute"
 const PATH_OAUTH_CLIENTS = "/oauth-clients"
 const PATH_TRANSACTION = "/transaction"
+const PATH_ASYNC_TRANSACTIONS = "/transactions"
 const PATH_USERS = "/users"
 
 struct HTTPError <: Exception
@@ -57,7 +58,7 @@ function _mkurl(ctx::Context, path)
 end
 
 function _print_request(method, path, query, body)
-    println("$method $path") 
+    println("$method $path")
     !isnothing(query) && for (k, v) in query
         println("$k: $v")
     end
@@ -348,6 +349,68 @@ function exec(ctx::Context, database::AbstractString, engine::AbstractString, so
 end
 # todo: when we have async transactions, add a variation that dispatches and
 #   waits .. consider creating two entry points for readonly and readwrite.
+
+function exec_v2(ctx::Context, database::AbstractString, engine::AbstractString, source; inputs = nothing, readonly = false, kw...)
+    if inputs !== nothing
+        @error "inputs= is not yet supported in the v2 API. For now, please use `exec_v1(...)` instead."
+    end
+    source isa IO && (source = read(source, String))
+    tx_body = Dict(
+        "dbname" => database,
+        "engine_name" => engine,
+        "query" => source,
+        #"nowait_durable" => self.nowait_durable, # TODO: currently unsupported
+        "readonly" => readonly,
+        # "sync_mode" => "async"
+    )
+    body = JSON3.write(tx_body)
+    path = _mkurl(ctx, PATH_ASYNC_TRANSACTIONS)
+    rsp = request(ctx, "POST", path; body = body, kw...)
+    return _parse_response(rsp)
+end
+
+function _parse_response(rsp)
+    content_type = HTTP.header(rsp, "Content-Type")
+    content = HTTP.body(rsp)
+    if lowercase(content_type) == "application/json"
+        # async mode
+        return JSON3.read(content)
+    elseif occursin("multipart/form-data", lowercase(content_type))
+        # sync mode
+        return _parse_multipart(content_type, content)
+    else
+        error("Unknown response content-type, for response:\n$(rsp)")
+    end
+end
+
+function get_transaction(ctx::Context, id::AbstractString; kw...)
+    path = PATH_ASYNC_TRANSACTIONS * "/$id"
+    rsp = _get(ctx, path; kw...)
+    return rsp.transaction
+end
+
+function get_transaction_metadata(ctx::Context, id::AbstractString; kw...)
+    path = PATH_ASYNC_TRANSACTIONS * "/$id/metadata"
+    rsp = _get(ctx, path; kw...)
+    return rsp
+end
+
+function get_transaction_results(ctx::Context, id::AbstractString; kw...)
+    path = PATH_ASYNC_TRANSACTIONS * "/$id/results"
+    path = _mkurl(ctx, path)
+    rsp = request(ctx, "GET", path; kw...)
+    content_type = HTTP.header(rsp, "Content-Type")
+    content = HTTP.body(rsp)
+    if !occursin("multipart/form-data", content_type)
+        throw(HTTPError(400, "Unexpected response content-type for rsp:\n$rsp"))
+    end
+    return _parse_multipart(content_type, content)
+end
+
+function _parse_multipart(content_type, body)
+    # TODO: ...
+    return String(body)
+end
 
 function list_edbs(ctx::Context, database::AbstractString, engine::AbstractString; kw...)
     tx = Transaction(ctx.region, database, engine, "OPEN"; readonly = true)
