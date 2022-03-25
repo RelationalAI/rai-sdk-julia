@@ -19,6 +19,7 @@
 # Julia language.
 
 import JSON3
+import Arrow
 
 const PATH_DATABASE = "/database"
 const PATH_ENGINE = "/compute"
@@ -371,13 +372,13 @@ end
 
 function _parse_response(rsp)
     content_type = HTTP.header(rsp, "Content-Type")
-    content = HTTP.body(rsp)
     if lowercase(content_type) == "application/json"
+        content = HTTP.body(rsp)
         # async mode
         return JSON3.read(content)
     elseif occursin("multipart/form-data", lowercase(content_type))
         # sync mode
-        return _parse_multipart(content_type, content)
+        return _parse_multipart_results_response(msg)
     else
         error("Unknown response content-type, for response:\n$(rsp)")
     end
@@ -400,16 +401,27 @@ function get_transaction_results(ctx::Context, id::AbstractString; kw...)
     path = _mkurl(ctx, path)
     rsp = request(ctx, "GET", path; kw...)
     content_type = HTTP.header(rsp, "Content-Type")
-    content = HTTP.body(rsp)
     if !occursin("multipart/form-data", content_type)
         throw(HTTPError(400, "Unexpected response content-type for rsp:\n$rsp"))
     end
-    return _parse_multipart(content_type, content)
+    return _parse_multipart_results_response(rsp)
+end
+struct ResultPhysicalRelation
+    name::String
+    data::Arrow.Table
 end
 
-function _parse_multipart(content_type, body)
-    # TODO: ...
-    return String(body)
+function _parse_multipart_results_response(msg)
+    # TODO: in-place conversion to Arrow without copying the bytes.
+    #   ... HTTP.parse_multipart_form() copies the bytes into IOBuffers.
+    parts = _parse_multipart_form(msg)
+    problems_idx = findfirst(p->p.name == "problems", parts)
+    results_start_idx = findfirst(p->startswith(p.name, '/'), parts)
+
+    return (
+        problems = JSON3.read(parts[problems_idx]),
+        relations = [ResultPhysicalRelation(part.name, Arrow.Table(part.data)) for part in @view parts[results_start_idx:end]],
+    )
 end
 
 function list_edbs(ctx::Context, database::AbstractString, engine::AbstractString; kw...)
@@ -507,3 +519,21 @@ function load_model(ctx::Context, database::AbstractString, engine::AbstractStri
     actions = [_make_load_model_action(name, model) for (name, model) in models]
     return _post(ctx, PATH_TRANSACTION; query = query(tx), body = body(tx, actions...), kw...)
 end
+
+
+
+# --- utils -------------------------
+# TODO: Delete this once https://github.com/JuliaWeb/HTTP.jl/issues/816 is addressed:
+function _parse_multipart_form(msg::HTTP.Message)
+    # parse boundary from Content-Type
+    m = match(r"multipart/form-data; boundary=(.*)$", msg["Content-Type"])
+    m === nothing && return nothing
+
+    boundary_delimiter = m[1]
+
+    # [RFC2046 5.1.1](https://tools.ietf.org/html/rfc2046#section-5.1.1)
+    length(boundary_delimiter) > 70 && error("boundary delimiter must not be greater than 70 characters")
+
+    return HTTP.MultiPartParsing.parse_multipart_body(HTTP.payload(msg), boundary_delimiter)
+end
+# -----------------------------------
