@@ -21,6 +21,8 @@
 import JSON3
 import Arrow
 
+using Mocking: Mocking,@mock  # For unit testing, by mocking API server responses
+
 const PATH_DATABASE = "/database"
 const PATH_ENGINE = "/compute"
 const PATH_OAUTH_CLIENTS = "/oauth-clients"
@@ -366,7 +368,7 @@ function exec_v2(ctx::Context, database::AbstractString, engine::AbstractString,
     )
     body = JSON3.write(tx_body)
     path = _mkurl(ctx, PATH_ASYNC_TRANSACTIONS)
-    rsp = request(ctx, "POST", path; body = body, kw...)
+    rsp = @mock request(ctx, "POST", path; body = body, kw...)
     return _parse_response(rsp)
 end
 
@@ -378,7 +380,7 @@ function _parse_response(rsp)
         return JSON3.read(content)
     elseif occursin("multipart/form-data", lowercase(content_type))
         # sync mode
-        return _parse_multipart_results_response(msg)
+        return _parse_multipart_fastpath_sync_response(rsp)
     else
         error("Unknown response content-type, for response:\n$(rsp)")
     end
@@ -411,10 +413,29 @@ struct ResultPhysicalRelation
     data::Arrow.Table
 end
 
+function _parse_multipart_fastpath_sync_response(msg)
+    # TODO: in-place conversion to Arrow without copying the bytes.
+    #   ... HTTP.parse_multipart_form() copies the bytes into IOBuffers.
+    parts = _parse_multipart_form(msg)
+    @assert parts[1].name == "transaction"
+    @assert parts[2].name == "metadata"
+
+    results_and_problems = _extract_multipart_results_response(parts)
+
+    return (
+        transaction = JSON3.read(parts[1]),
+        metadata = JSON3.read(parts[2]),
+        results_and_problems...,
+    )
+end
+
 function _parse_multipart_results_response(msg)
     # TODO: in-place conversion to Arrow without copying the bytes.
     #   ... HTTP.parse_multipart_form() copies the bytes into IOBuffers.
     parts = _parse_multipart_form(msg)
+    return _extract_multipart_results_response(parts)
+end
+function _extract_multipart_results_response(parts)
     problems_idx = findfirst(p->p.name == "problems", parts)
     results_start_idx = findfirst(p->startswith(p.name, '/'), parts)
 
@@ -423,6 +444,7 @@ function _parse_multipart_results_response(msg)
         relations = [ResultPhysicalRelation(part.name, Arrow.Table(part.data)) for part in @view parts[results_start_idx:end]],
     )
 end
+
 
 function list_edbs(ctx::Context, database::AbstractString, engine::AbstractString; kw...)
     tx = Transaction(ctx.region, database, engine, "OPEN"; readonly = true)
