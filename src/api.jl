@@ -354,9 +354,6 @@ end
 #   waits .. consider creating two entry points for readonly and readwrite.
 
 function exec_v2(ctx::Context, database::AbstractString, engine::AbstractString, source; inputs = nothing, readonly = false, kw...)
-    if inputs !== nothing
-        @error "inputs= is not yet supported in the v2 API. For now, please use `exec_v1(...)` instead."
-    end
     source isa IO && (source = read(source, String))
     tx_body = Dict(
         "dbname" => database,
@@ -366,6 +363,9 @@ function exec_v2(ctx::Context, database::AbstractString, engine::AbstractString,
         "readonly" => readonly,
         # "sync_mode" => "async"
     )
+    if inputs !== nothing
+        tx_body["v1_inputs"] = [_make_query_action_input(k, v) for (k, v) in inputs]
+    end
     body = JSON3.write(tx_body)
     path = _mkurl(ctx, PATH_ASYNC_TRANSACTIONS)
     rsp = @mock request(ctx, "POST", path; body = body, kw...)
