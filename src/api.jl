@@ -21,7 +21,7 @@
 import JSON3
 import Arrow
 
-using Mocking: Mocking,@mock  # For unit testing, by mocking API server responses
+using Mocking: Mocking, @mock  # For unit testing, by mocking API server responses
 
 const PATH_DATABASE = "/database"
 const PATH_ENGINE = "/compute"
