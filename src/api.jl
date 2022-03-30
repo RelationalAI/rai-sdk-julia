@@ -393,6 +393,13 @@ function get_transaction(ctx::Context, id::AbstractString; kw...)
     return rsp.transaction
 end
 
+function transaction_is_done(txn)
+    if hasproperty(txn, :transaction)
+        txn = txn.transaction
+    end
+    return txn.state ∈ ("COMPLETED", "ABORTED")
+end
+
 function get_transaction_metadata(ctx::Context, id::AbstractString; kw...)
     path = PATH_ASYNC_TRANSACTIONS * "/$id/metadata"
     rsp = _get(ctx, path; kw...)
@@ -415,6 +422,7 @@ function get_transaction_results(ctx::Context, id::AbstractString; kw...)
     end
     return _parse_multipart_results_response(rsp)
 end
+
 struct ResultPhysicalRelation
     name::String
     data::Arrow.Table
@@ -431,7 +439,11 @@ function _parse_multipart_fastpath_sync_response(msg)
     problems = JSON3.read(parts[problems_idx])
 
     results_start_idx = findfirst(p->startswith(p.name, '/'), parts)
-    results = _extract_multipart_results_response(@view(parts[results_start_idx:end]))
+    if results_start_idx === nothing
+        results = []
+    else
+        results = _extract_multipart_results_response(@view(parts[results_start_idx:end]))
+    end
 
     return (
         transaction = JSON3.read(parts[1]),
