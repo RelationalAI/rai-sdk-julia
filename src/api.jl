@@ -343,7 +343,7 @@ end
 
 # Execute the given query string, using any given optioanl query inputs.
 # todo: consider create_transaction
-# todo: consider create_transaction to better align with future transaciton
+# todo: consider create_transaction to better align with future transaction
 #   resource model
 function exec(ctx::Context, database::AbstractString, engine::AbstractString, source; inputs = nothing, readonly = false, kw...)
     source isa IO && (source = read(source, String))
@@ -354,7 +354,7 @@ end
 # todo: when we have async transactions, add a variation that dispatches and
 #   waits .. consider creating two entry points for readonly and readwrite.
 
-function exec_v2(ctx::Context, database::AbstractString, engine::AbstractString, source; inputs = nothing, readonly = false, kw...)
+function exec_async(ctx::Context, database::AbstractString, engine::AbstractString, source; inputs = nothing, readonly = false, kw...)
     source isa IO && (source = read(source, String))
     tx_body = Dict(
         "dbname" => database,

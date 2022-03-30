@@ -56,14 +56,14 @@ function make_arrow_table(vals)
     return Arrow.Table(io)
 end
 
-@testset "exec_v2" begin
+@testset "exec_async" begin
     ctx = Context("region", "scheme", "host", "2342", nothing)
 
     @testset "async response" begin
         patch = make_patch(v2_async_response)
 
         apply(patch) do
-            rsp = RAI.exec_v2(ctx, "engine", "database", "2+2")
+            rsp = RAI.exec_async(ctx, "engine", "database", "2+2")
             @test rsp == JSON3.read("""{"id":"1fc9001b-1b88-8685-452e-c01bc6812429","state":"CREATED"}""")
         end
     end
@@ -72,7 +72,7 @@ end
         patch = make_patch(v2_fastpath_response)
 
         apply(patch) do
-            rsp = RAI.exec_v2(ctx, "engine", "database", "2+2")
+            rsp = RAI.exec_async(ctx, "engine", "database", "2+2")
             @test rsp.transaction == JSON3.read("""{
                     "id": "a3e3bc91-0a98-50ba-733c-0987e160eb7d",
                     "results_format_version": "2.0.1",
