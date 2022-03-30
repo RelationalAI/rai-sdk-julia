@@ -440,11 +440,11 @@ function _parse_multipart_fastpath_sync_response(msg)
         results = _extract_multipart_results_response(@view(parts[results_start_idx:end]))
     end
 
-    return (
-        transaction = JSON3.read(parts[1]),
-        metadata = JSON3.read(parts[2]),
-        problems = problems,
-        results = results,
+    return Dict(
+        "transaction" => JSON3.read(parts[1]),
+        "metadata" => JSON3.read(parts[2]),
+        "problems" => problems,
+        "results" => results,
     )
 end
 
