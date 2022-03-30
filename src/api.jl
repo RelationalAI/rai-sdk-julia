@@ -394,10 +394,10 @@ function get_transaction(ctx::Context, id::AbstractString; kw...)
 end
 
 function transaction_is_done(txn)
-    if haskey(txn, :transaction)
-        txn = txn.transaction
+    if haskey(txn, "transaction")
+        txn = txn["transaction"]
     end
-    return txn.state ∈ ("COMPLETED", "ABORTED")
+    return txn["state"] ∈ ("COMPLETED", "ABORTED")
 end
 
 function get_transaction_metadata(ctx::Context, id::AbstractString; kw...)
