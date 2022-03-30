@@ -72,7 +72,6 @@ end
         patch = make_patch(v2_fastpath_response)
 
         apply(patch) do
-            data = make_arrow_table([4])
             rsp = RAI.exec_v2(ctx, "engine", "database", "2+2")
             @test rsp.transaction == JSON3.read("""{
                     "id": "a3e3bc91-0a98-50ba-733c-0987e160eb7d",
@@ -88,10 +87,12 @@ end
             }""")]
             @test rsp.problems == Union{}[]
 
+            # Test for the expected arrow data:
+            expected_data = make_arrow_table([4])
             # Arrow.Tables can't be compared via == (https://github.com/apache/arrow-julia/issues/310)
             @test length(rsp.results) == 1
             @test rsp.results[1].name == "/:output/Int64"
-            @test collect(rsp.results[1].data) == collect(data)
+            @test collect(rsp.results[1].data) == collect(expected_data)
         end
     end
 end
