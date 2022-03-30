@@ -553,17 +553,23 @@ end
 
 
 # --- utils -------------------------
-# TODO: Delete this once https://github.com/JuliaWeb/HTTP.jl/issues/816 is addressed:
-function _parse_multipart_form(msg::HTTP.Message)
-    # parse boundary from Content-Type
-    m = match(r"multipart/form-data; boundary=(.*)$", msg["Content-Type"])
-    m === nothing && return nothing
+# Patch for older versions of HTTP package that don't support parsing multipart responses:
+if hasmethod(HTTP.MultiPartParsing.parse_multipart_form, (HTTP.Response,))
+    # Available as of HTTP v0.9.18:
+    _parse_multipart_form = HTTP.MultiPartParsing.parse_multipart_form
+else
+    # This function is copied directly from this PR: https://github.com/JuliaWeb/HTTP.jl/pull/817
+    function _parse_multipart_form(msg::HTTP.Message)
+        # parse boundary from Content-Type
+        m = match(r"multipart/form-data; boundary=(.*)$", msg["Content-Type"])
+        m === nothing && return nothing
 
-    boundary_delimiter = m[1]
+        boundary_delimiter = m[1]
 
-    # [RFC2046 5.1.1](https://tools.ietf.org/html/rfc2046#section-5.1.1)
-    length(boundary_delimiter) > 70 && error("boundary delimiter must not be greater than 70 characters")
+        # [RFC2046 5.1.1](https://tools.ietf.org/html/rfc2046#section-5.1.1)
+        length(boundary_delimiter) > 70 && error("boundary delimiter must not be greater than 70 characters")
 
-    return HTTP.MultiPartParsing.parse_multipart_body(HTTP.payload(msg), boundary_delimiter)
+        return HTTP.MultiPartParsing.parse_multipart_body(HTTP.payload(msg), boundary_delimiter)
+    end
 end
 # -----------------------------------
