@@ -423,11 +423,6 @@ function get_transaction_results(ctx::Context, id::AbstractString; kw...)
     return _parse_multipart_results_response(rsp)
 end
 
-struct ResultPhysicalRelation
-    name::String
-    data::Arrow.Table
-end
-
 function _parse_multipart_fastpath_sync_response(msg)
     # TODO: in-place conversion to Arrow without copying the bytes.
     #   ... HTTP.parse_multipart_form() copies the bytes into IOBuffers.
@@ -461,7 +456,7 @@ function _parse_multipart_results_response(msg)
 end
 function _extract_multipart_results_response(parts)
     return [
-        ResultPhysicalRelation(part.name, Arrow.Table(part.data)) for part in parts
+        (part.name => Arrow.Table(part.data)) for part in parts
     ]
 end
 

@@ -91,8 +91,8 @@ end
             expected_data = make_arrow_table([4])
             # Arrow.Tables can't be compared via == (https://github.com/apache/arrow-julia/issues/310)
             @test length(rsp.results) == 1
-            @test rsp.results[1].name == "/:output/Int64"
-            @test collect(rsp.results[1].data) == collect(expected_data)
+            @test rsp.results[1][1] == "/:output/Int64"
+            @test collect(rsp.results[1][2]) == collect(expected_data)
         end
     end
 end
