@@ -394,7 +394,7 @@ function get_transaction(ctx::Context, id::AbstractString; kw...)
 end
 
 function transaction_is_done(txn)
-    if hasproperty(txn, :transaction)
+    if haskey(txn, :transaction)
         txn = txn.transaction
     end
     return txn.state ∈ ("COMPLETED", "ABORTED")
