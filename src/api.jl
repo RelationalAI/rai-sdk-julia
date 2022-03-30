@@ -18,6 +18,7 @@
 # functionality as direclty as possible, but in a way that is natural for the
 # Julia language.
 
+#using Infiltrator
 import JSON3
 import Arrow
 
@@ -398,6 +399,12 @@ function get_transaction_metadata(ctx::Context, id::AbstractString; kw...)
     return rsp
 end
 
+function get_transaction_problems(ctx::Context, id::AbstractString; kw...)
+    path = PATH_ASYNC_TRANSACTIONS * "/$id/problems"
+    rsp = _get(ctx, path; kw...)
+    return rsp
+end
+
 function get_transaction_results(ctx::Context, id::AbstractString; kw...)
     path = PATH_ASYNC_TRANSACTIONS * "/$id/results"
     path = _mkurl(ctx, path)
@@ -420,12 +427,17 @@ function _parse_multipart_fastpath_sync_response(msg)
     @assert parts[1].name == "transaction"
     @assert parts[2].name == "metadata"
 
-    results_and_problems = _extract_multipart_results_response(parts)
+    problems_idx = findfirst(p->p.name == "problems", parts)
+    problems = JSON3.read(parts[problems_idx])
+
+    results_start_idx = findfirst(p->startswith(p.name, '/'), parts)
+    results = _extract_multipart_results_response(@view(parts[results_start_idx:end]))
 
     return (
         transaction = JSON3.read(parts[1]),
         metadata = JSON3.read(parts[2]),
-        results_and_problems...,
+        problems = problems,
+        results = results,
     )
 end
 
@@ -436,13 +448,9 @@ function _parse_multipart_results_response(msg)
     return _extract_multipart_results_response(parts)
 end
 function _extract_multipart_results_response(parts)
-    problems_idx = findfirst(p->p.name == "problems", parts)
-    results_start_idx = findfirst(p->startswith(p.name, '/'), parts)
-
-    return (
-        problems = JSON3.read(parts[problems_idx]),
-        relations = [ResultPhysicalRelation(part.name, Arrow.Table(part.data)) for part in @view parts[results_start_idx:end]],
-    )
+    return [
+        ResultPhysicalRelation(part.name, Arrow.Table(part.data)) for part in parts
+    ]
 end
 
 
