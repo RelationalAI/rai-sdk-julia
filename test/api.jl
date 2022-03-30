@@ -89,9 +89,9 @@ end
             @test rsp.problems == Union{}[]
 
             # Arrow.Tables can't be compared via == (https://github.com/apache/arrow-julia/issues/310)
-            @test length(rsp.relations) == 1
-            @test rsp.relations[1].name == "/:output/Int64"
-            @test collect(rsp.relations[1].data) == collect(data)
+            @test length(rsp.results) == 1
+            @test rsp.results[1].name == "/:output/Int64"
+            @test collect(rsp.results[1].data) == collect(data)
         end
     end
 end
