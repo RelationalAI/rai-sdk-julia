@@ -31,7 +31,7 @@ using RAI: Context, HTTPError, exec, load_config, show_result
 include("parseargs.jl")
 
 const source = """
-def output = 
+def output =
     :drink, "martini", 2, 12.50, "2020-01-01";
     :drink, "sazerac", 4, 14.25, "2020-02-02";
     :drink, "cosmopolitan", 4, 11.00, "2020-03-03";
@@ -41,7 +41,7 @@ def output =
 function run(database, engine; profile)
     conf = load_config(; profile = profile)
     ctx = Context(conf)
-    rsp = exec(ctx, database, engine, source)
+    rsp = exec_v1(ctx, database, engine, source)
     show_result(rsp)
 end
 

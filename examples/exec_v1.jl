@@ -21,7 +21,7 @@ include("parseargs.jl")
 function run(database, engine, source; profile)
     conf = load_config(; profile = profile)
     ctx = Context(conf)
-    rsp = exec(ctx, database, engine, source)
+    rsp = exec_v1(ctx, database, engine, source)
     show_result(rsp)
 end
 
