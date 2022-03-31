@@ -18,9 +18,9 @@
 # functionality as direclty as possible, but in a way that is natural for the
 # Julia language.
 
-#using Infiltrator
 import JSON3
 import Arrow
+using Base.Threads: @spawn
 
 using Mocking: Mocking, @mock  # For unit testing, by mocking API server responses
 
@@ -345,7 +345,7 @@ end
 # todo: consider create_transaction
 # todo: consider create_transaction to better align with future transaction
 #   resource model
-function exec(ctx::Context, database::AbstractString, engine::AbstractString, source; inputs = nothing, readonly = false, kw...)
+function exec_v1(ctx::Context, database::AbstractString, engine::AbstractString, source; inputs = nothing, readonly = false, kw...)
     source isa IO && (source = read(source, String))
     tx = Transaction(ctx.region, database, engine, "OPEN"; readonly = readonly)
     data = body(tx, _make_query_action(source, inputs))
@@ -353,6 +353,39 @@ function exec(ctx::Context, database::AbstractString, engine::AbstractString, so
 end
 # todo: when we have async transactions, add a variation that dispatches and
 #   waits .. consider creating two entry points for readonly and readwrite.
+
+function exec(ctx::Context, database::AbstractString, engine::AbstractString, source; inputs = nothing, readonly = false, kw...)
+    txn = exec_async(ctx, database, engine, source; inputs, readonly, kw...)
+    try
+        backoff = Base.ExponentialBackOff(n=typemax(Int), first_delay=2, factor=2.0, max_delay=120) # 2 min
+        for duration in backoff
+            transaction_is_done(txn) && break
+
+            txn = get_transaction(ctx, txn["id"])
+            sleep(duration)
+        end
+        if haskey(txn, "results")
+            return txn
+        else
+            id = txn["id"]
+            t = @spawn get_transaction(ctx, id)
+            m = @spawn get_transaction_metadata(ctx, id)
+            p = @spawn get_transaction_problems(ctx, id)
+            r = @spawn get_transaction_results(ctx, id)
+            return Dict(
+                "transaction" => fetch(t),
+                "metadata" => fetch(m),
+                "problems" => fetch(p),
+                "results" => fetch(r),
+            )
+        end
+    catch
+        # Always print out the transaction id so that users can still get the txn ID even
+        # if there's an error during polling (such as an InterruptException).
+        @info """Exception while polling for transaction:\n"id": $(repr(txn["id"]))"""
+        rethrow()
+    end
+end
 
 function exec_async(ctx::Context, database::AbstractString, engine::AbstractString, source; inputs = nothing, readonly = false, kw...)
     source isa IO && (source = read(source, String))
