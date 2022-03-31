@@ -357,7 +357,12 @@ end
 function exec(ctx::Context, database::AbstractString, engine::AbstractString, source; inputs = nothing, readonly = false, kw...)
     txn = exec_async(ctx, database, engine, source; inputs, readonly, kw...)
     try
-        backoff = Base.ExponentialBackOff(n=typemax(Int), first_delay=2, factor=2.0, max_delay=120) # 2 min
+        backoff = Base.ExponentialBackOff(
+                n = typemax(Int),
+                first_delay = 2,
+                factor = 1.2,
+                max_delay = 120,  # 2 min
+            )
         for duration in backoff
             transaction_is_done(txn) && break
 
