@@ -359,8 +359,8 @@ function exec(ctx::Context, database::AbstractString, engine::AbstractString, so
     try
         backoff = Base.ExponentialBackOff(
                 n = typemax(Int),
-                first_delay = 2,
-                factor = 1.2,
+                first_delay = 0.5,
+                factor = 1.1,
                 max_delay = 120,  # 2 min
             )
         for duration in backoff
