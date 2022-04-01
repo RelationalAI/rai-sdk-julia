@@ -294,7 +294,6 @@ function _make_query_action(source, ::Nothing)
     return Dict(
         "type" => "QueryAction",
         "source" => _make_query_source("query", source),
-        "persist" => [], # todo: remove
         "inputs" => [],
         "outputs" => [])
 end
@@ -303,7 +302,6 @@ function _make_query_action(source, inputs::Dict)
     return Dict(
         "type" => "QueryAction",
         "source" => _make_query_source("query", source),
-        "persist" => [], # todo: remove
         "inputs" => [_make_query_action_input(k, v) for (k, v) in inputs],
         "outputs" => [])
 end
