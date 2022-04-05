@@ -376,7 +376,9 @@ function _parse_response(rsp)
     if lowercase(content_type) == "application/json"
         content = HTTP.body(rsp)
         # async mode
-        return JSON3.read(content)
+        return Dict(
+            "transaction" => JSON3.read(content),
+        )
     elseif occursin("multipart/form-data", lowercase(content_type))
         # sync mode
         return _parse_multipart_fastpath_sync_response(rsp)
