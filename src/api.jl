@@ -355,7 +355,7 @@ end
 #   waits .. consider creating two entry points for readonly and readwrite.
 
 function exec(ctx::Context, database::AbstractString, engine::AbstractString, source; inputs = nothing, readonly = false, kw...)
-    txn = exec_async(ctx, database, engine, source; inputs, readonly, kw...)
+    txn = exec_async(ctx, database, engine, source; inputs=inputs, readonly=readonly, kw...)
     try
         backoff = Base.ExponentialBackOff(
                 n = typemax(Int),
