@@ -22,7 +22,8 @@ function run(database, engine, source; profile)
     conf = load_config(; profile = profile)
     ctx = Context(conf)
     rsp = exec(ctx, database, engine, source)
-    show_result(rsp)
+    display(rsp)
+    println()
 end
 
 function main()

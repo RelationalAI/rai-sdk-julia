@@ -12,33 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-# There are several ways to display transaction results in a friendly way:
-#
-#     show_result(rsp)
-#
-# .. which is equivalent to:
-#
-#     show(TransactionResult(rsp))
-#
-# .. or, if you want to navigate the relations explicitly:
-#
-#     for relation in result.relations
-#         show(relation)
-#     end
+# Exeecute the given query string.
 
 using RAI: Context, HTTPError, exec, load_config, show_result
 
 include("parseargs.jl")
 
-const source = """
-def output =
-    :drink, "martini", 2, 12.50, "2020-01-01";
-    :drink, "sazerac", 4, 14.25, "2020-02-02";
-    :drink, "cosmopolitan", 4, 11.00, "2020-03-03";
-    :drink, "bellini", 3, 12.25, "2020-04-04"
-"""
-
-function run(database, engine; profile)
+function run(database, engine, source; profile)
     conf = load_config(; profile = profile)
     ctx = Context(conf)
     rsp = exec_v1(ctx, database, engine, source)
@@ -49,9 +29,19 @@ function main()
     args = parseargs(
         "database", Dict(:help => "database name", :required => true),
         "engine", Dict(:help => "engine name", :required => true),
+        "command", Dict(:help => "rel source string"),
+        ["--file", "-f"], Dict(:help => "rel source file"),
+        "--readonly", Dict(:help => "readonly query (default: false)", :action => "store_true"),
         "--profile", Dict(:help => "config profile (default: default)"))
     try
-        run(args.database, args.engine; profile = args.profile)
+        source = nothing
+        if !isnothing(args.command)
+            source = args.command
+        elseif !isnothing(args.file)
+            source = open(args.file, "r")
+        end
+        isnothing(source) && return  # nothing to execute
+        run(args.database, args.engine, source; profile = args.profile)
     catch e
         e isa HTTPError ? show(e) : rethrow()
     end
