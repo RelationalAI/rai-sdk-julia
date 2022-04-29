@@ -400,13 +400,13 @@ function exec(ctx::Context, database::AbstractString, engine::AbstractString, so
         for duration in backoff
             transaction_is_done(txn) && break
 
-            txn = get_transaction(ctx, txn["id"])
+            txn = get_transaction(ctx, transaction_id(txn))
             sleep(duration)
         end
         if haskey(txn, "results")
             return txn
         else
-            id = txn["id"]
+            id = transaction_id(txn)
             t = @spawn get_transaction(ctx, id)
             m = @spawn get_transaction_metadata(ctx, id)
             p = @spawn get_transaction_problems(ctx, id)
@@ -419,9 +419,10 @@ function exec(ctx::Context, database::AbstractString, engine::AbstractString, so
             )
         end
     catch
+        @info "TXN" txn
         # Always print out the transaction id so that users can still get the txn ID even
         # if there's an error during polling (such as an InterruptException).
-        @info """Exception while polling for transaction:\n"id": $(repr(txn["id"]))"""
+        #@info """Exception while polling for transaction:\n"id": $(repr(transaction_id(txn)))"""
         rethrow()
     end
 end
@@ -472,6 +473,13 @@ function transaction_is_done(txn)
         txn = txn["transaction"]
     end
     return txn["state"] ∈ ("COMPLETED", "ABORTED")
+end
+
+function transaction_id(txn)
+    if haskey(txn, "transaction")
+        txn = txn["transaction"]
+    end
+    return txn["id"]
 end
 
 function get_transaction_metadata(ctx::Context, id::AbstractString; kw...)
