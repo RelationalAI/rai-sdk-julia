@@ -5,5 +5,5 @@
     - Uses the "v2 protocol", so the transactions will show up in your transaction log.
     - If you cancel the polling via `ctrl-C`, the error log will print the transaction ID, so you can still
       recover the transaction or cancel it.
-* Consistent return format (`Dict`) from `exec_async()` and `exec()`, regardless of whether you get synchronous results.
+* Consistent return format (`Dict`) from `exec_async()` and `exec()`, regardless of whether you get synchronous results ([#24](https://github.com/RelationalAI/rai-sdk-julia/pull/24)).
 
