@@ -103,9 +103,7 @@ function _authenticate!(
     creds::ClientCredentials,
     headers::HTTP.Headers
 )::Nothing
-    if isnothing(creds.access_token)
-        creds.access_token = get_access_token(ctx, creds)
-    end
+    creds.access_token = get_access_token(ctx, creds)
     push!(headers, "Authorization" => "Bearer $(creds.access_token.token)")
     return nothing
 end
