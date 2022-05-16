@@ -1,5 +1,11 @@
 # Changelog
 
+## latest
+* Added `extraHeaders` support to the SDK. This could be used as following:
+```
+create_engine(ctx, engine; size = size, extraHeaders=Dict{String, String}("x-rai-parameter-compute-version" => "....-rai-server-binary-linux"))
+```
+
 ## v0.0.2
 * Added synchronous `exec()` function that polls the v2 `exec_async()` function until completion ([#25](https://github.com/RelationalAI/rai-sdk-julia/pull/25)).
     - Uses the "v2 protocol", so the transactions will show up in your transaction log.

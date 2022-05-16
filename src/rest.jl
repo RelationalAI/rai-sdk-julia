@@ -121,6 +121,8 @@ function request(
 )::HTTP.Response
     isnothing(body) && (body = UInt8[])
     _ensure_headers!(headers)
+    # Adding extra headers if present is kwargs
+    haskey(Dict(kw), :extraHeaders) && push!(headers, kw[:extraHeaders]...)
     _authenticate!(ctx, headers)
     opts = (redirect = false, retry = false)
     return HTTP.request(method, url, headers; query = query, body = body, opts..., kw...)
