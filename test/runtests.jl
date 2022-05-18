@@ -18,6 +18,10 @@ import Tables
 using RAI
 using Test
 
+@testset "api.jl" begin
+    include("api.jl")
+end
+
 # def output =
 #     1, "foo", 3.4, :foo;
 #     2, "bar", 5.6, :foo

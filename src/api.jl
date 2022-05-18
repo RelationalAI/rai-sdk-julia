@@ -19,11 +19,16 @@
 # Julia language.
 
 import JSON3
+import Arrow
+using Base.Threads: @spawn
+
+using Mocking: Mocking, @mock  # For unit testing, by mocking API server responses
 
 const PATH_DATABASE = "/database"
 const PATH_ENGINE = "/compute"
 const PATH_OAUTH_CLIENTS = "/oauth-clients"
 const PATH_TRANSACTION = "/transaction"
+const PATH_ASYNC_TRANSACTIONS = "/transactions"
 const PATH_USERS = "/users"
 
 struct HTTPError <: Exception
@@ -57,7 +62,7 @@ function _mkurl(ctx::Context, path)
 end
 
 function _print_request(method, path, query, body)
-    println("$method $path") 
+    println("$method $path")
     !isnothing(query) && for (k, v) in query
         println("$k: $v")
     end
@@ -347,9 +352,9 @@ end
 
 # Execute the given query string, using any given optioanl query inputs.
 # todo: consider create_transaction
-# todo: consider create_transaction to better align with future transaciton
+# todo: consider create_transaction to better align with future transaction
 #   resource model
-function exec(ctx::Context, database::AbstractString, engine::AbstractString, source; inputs = nothing, readonly = false, kw...)
+function exec_v1(ctx::Context, database::AbstractString, engine::AbstractString, source; inputs = nothing, readonly = false, kw...)
     source isa IO && (source = read(source, String))
     tx = Transaction(ctx.region, database, engine, "OPEN"; readonly = readonly)
     data = body(tx, _make_query_action(source, inputs))
@@ -357,6 +362,195 @@ function exec(ctx::Context, database::AbstractString, engine::AbstractString, so
 end
 # todo: when we have async transactions, add a variation that dispatches and
 #   waits .. consider creating two entry points for readonly and readwrite.
+
+"""
+    exec(ctx, "database", "engine", "query source"; kwargs...)
+
+Synchronously execute a provided query string in the supplied database. This function
+creates a Transaction using the supplied engine, and then polls the Transaction until it has
+completed, and returns a Dict holding the Transaction resource and its results and metadata.
+
+## Keyword Arguments:
+- `readonly = false`: If true, this is a "read-only query", and the effects of this
+   transaction will not be committed to the database.
+- `inputs`: Optional dictionary of input pairs, mapping a relation name to a value.
+   (Deprecated - the format of the inputs Dict will change in upcoming releases.)
+
+# Examples:
+```julia
+julia> exec(ctx, "my_database", "my_engine", "2 + 2")
+Dict{String, Any} with 4 entries:
+  "metadata"    => Union{}[]
+  "problems"    => Union{}[]
+  "results"     => Pair{String, Arrow.Table}["/:output/Int64"=>Arrow.Table with 1 r…
+  "transaction" => {…
+
+julia> exec(ctx, "my_database", "my_engine", \"""
+           def insert:my_relation = 1, 2, 3
+           \""",
+           readonly = false,
+       )
+Dict{String, Any} with 4 entries:
+  "metadata"    => Union{}[]
+  "problems"    => Union{}[]
+  "results"     => Any[]
+  "transaction" => {…
+```
+"""
+function exec(ctx::Context, database::AbstractString, engine::AbstractString, source; inputs = nothing, readonly = false, kw...)
+    txn = exec_async(ctx, database, engine, source; inputs=inputs, readonly=readonly, kw...)
+    try
+        backoff = Base.ExponentialBackOff(
+                n = typemax(Int),
+                first_delay = 0.5,
+                factor = 1.1,
+                max_delay = 120,  # 2 min
+            )
+        for duration in backoff
+            transaction_is_done(txn) && break
+
+            txn = get_transaction(ctx, transaction_id(txn))
+            sleep(duration)
+        end
+        if haskey(txn, "results")
+            return txn
+        else
+            id = transaction_id(txn)
+            t = @spawn get_transaction(ctx, id)
+            m = @spawn get_transaction_metadata(ctx, id)
+            p = @spawn get_transaction_problems(ctx, id)
+            r = @spawn get_transaction_results(ctx, id)
+            return Dict(
+                "transaction" => fetch(t),
+                "metadata" => fetch(m),
+                "problems" => fetch(p),
+                "results" => fetch(r),
+            )
+        end
+    catch
+        @info "TXN" txn
+        # Always print out the transaction id so that users can still get the txn ID even
+        # if there's an error during polling (such as an InterruptException).
+        #@info """Exception while polling for transaction:\n"id": $(repr(transaction_id(txn)))"""
+        rethrow()
+    end
+end
+
+function exec_async(ctx::Context, database::AbstractString, engine::AbstractString, source; inputs = nothing, readonly = false, kw...)
+    source isa IO && (source = read(source, String))
+    tx_body = Dict(
+        "dbname" => database,
+        "engine_name" => engine,
+        "query" => source,
+        #"nowait_durable" => self.nowait_durable, # TODO: currently unsupported
+        "readonly" => readonly,
+        # "sync_mode" => "async"
+    )
+    if inputs !== nothing
+        tx_body["v1_inputs"] = [_make_query_action_input(k, v) for (k, v) in inputs]
+    end
+    body = JSON3.write(tx_body)
+    path = _mkurl(ctx, PATH_ASYNC_TRANSACTIONS)
+    rsp = @mock request(ctx, "POST", path; body = body, kw...)
+    return _parse_response(rsp)
+end
+
+function _parse_response(rsp)
+    content_type = HTTP.header(rsp, "Content-Type")
+    if lowercase(content_type) == "application/json"
+        content = HTTP.body(rsp)
+        # async mode
+        return Dict(
+            "transaction" => JSON3.read(content),
+        )
+    elseif occursin("multipart/form-data", lowercase(content_type))
+        # sync mode
+        return _parse_multipart_fastpath_sync_response(rsp)
+    else
+        error("Unknown response content-type, for response:\n$(rsp)")
+    end
+end
+
+function get_transaction(ctx::Context, id::AbstractString; kw...)
+    path = PATH_ASYNC_TRANSACTIONS * "/$id"
+    rsp = _get(ctx, path; kw...)
+    return rsp.transaction
+end
+
+function transaction_is_done(txn)
+    if haskey(txn, "transaction")
+        txn = txn["transaction"]
+    end
+    return txn["state"] ∈ ("COMPLETED", "ABORTED")
+end
+
+function transaction_id(txn)
+    if haskey(txn, "transaction")
+        txn = txn["transaction"]
+    end
+    return txn["id"]
+end
+
+function get_transaction_metadata(ctx::Context, id::AbstractString; kw...)
+    path = PATH_ASYNC_TRANSACTIONS * "/$id/metadata"
+    rsp = _get(ctx, path; kw...)
+    return rsp
+end
+
+function get_transaction_problems(ctx::Context, id::AbstractString; kw...)
+    path = PATH_ASYNC_TRANSACTIONS * "/$id/problems"
+    rsp = _get(ctx, path; kw...)
+    return rsp
+end
+
+function get_transaction_results(ctx::Context, id::AbstractString; kw...)
+    path = PATH_ASYNC_TRANSACTIONS * "/$id/results"
+    path = _mkurl(ctx, path)
+    rsp = request(ctx, "GET", path; kw...)
+    content_type = HTTP.header(rsp, "Content-Type")
+    if !occursin("multipart/form-data", content_type)
+        throw(HTTPError(400, "Unexpected response content-type for rsp:\n$rsp"))
+    end
+    return _parse_multipart_results_response(rsp)
+end
+
+function _parse_multipart_fastpath_sync_response(msg)
+    # TODO: in-place conversion to Arrow without copying the bytes.
+    #   ... HTTP.parse_multipart_form() copies the bytes into IOBuffers.
+    parts = _parse_multipart_form(msg)
+    @assert parts[1].name == "transaction"
+    @assert parts[2].name == "metadata"
+
+    problems_idx = findfirst(p->p.name == "problems", parts)
+    problems = JSON3.read(parts[problems_idx])
+
+    results_start_idx = findfirst(p->startswith(p.name, '/'), parts)
+    if results_start_idx === nothing
+        results = []
+    else
+        results = _extract_multipart_results_response(@view(parts[results_start_idx:end]))
+    end
+
+    return Dict(
+        "transaction" => JSON3.read(parts[1]),
+        "metadata" => JSON3.read(parts[2]),
+        "problems" => problems,
+        "results" => results,
+    )
+end
+
+function _parse_multipart_results_response(msg)
+    # TODO: in-place conversion to Arrow without copying the bytes.
+    #   ... HTTP.parse_multipart_form() copies the bytes into IOBuffers.
+    parts = _parse_multipart_form(msg)
+    return _extract_multipart_results_response(parts)
+end
+function _extract_multipart_results_response(parts)
+    return [
+        (part.name => Arrow.Table(part.data)) for part in parts
+    ]
+end
+
 
 function list_edbs(ctx::Context, database::AbstractString, engine::AbstractString; kw...)
     tx = Transaction(ctx.region, database, engine, "OPEN"; readonly = true)
@@ -453,3 +647,27 @@ function load_model(ctx::Context, database::AbstractString, engine::AbstractStri
     actions = [_make_load_model_action(name, model) for (name, model) in models]
     return _post(ctx, PATH_TRANSACTION; query = query(tx), body = body(tx, actions...), kw...)
 end
+
+
+
+# --- utils -------------------------
+# Patch for older versions of HTTP package that don't support parsing multipart responses:
+if hasmethod(HTTP.MultiPartParsing.parse_multipart_form, (HTTP.Response,))
+    # Available as of HTTP v0.9.18:
+    _parse_multipart_form = HTTP.MultiPartParsing.parse_multipart_form
+else
+    # This function is copied directly from this PR: https://github.com/JuliaWeb/HTTP.jl/pull/817
+    function _parse_multipart_form(msg::HTTP.Message)
+        # parse boundary from Content-Type
+        m = match(r"multipart/form-data; boundary=(.*)$", msg["Content-Type"])
+        m === nothing && return nothing
+
+        boundary_delimiter = m[1]
+
+        # [RFC2046 5.1.1](https://tools.ietf.org/html/rfc2046#section-5.1.1)
+        length(boundary_delimiter) > 70 && error("boundary delimiter must not be greater than 70 characters")
+
+        return HTTP.MultiPartParsing.parse_multipart_body(HTTP.payload(msg), boundary_delimiter)
+    end
+end
+# -----------------------------------

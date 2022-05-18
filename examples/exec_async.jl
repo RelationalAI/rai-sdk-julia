@@ -12,17 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-# Exeecute the given query string.
+# Execute the given query string.
+# Example:
+# $ julia --proj=. examples/exec_async.jl "nhd-test-1" "nhd-s" "2+2"
+# Transaction is done...
+# JSON3.Object{Vector{UInt8}, Vector{UInt64}} with 2 entries:
+#   :id    => "261f5d59-f1b4-f778-4c13-a7993871c972"
+#   :state => "CREATED"
 
-using RAI: Context, HTTPError, exec, load_config, show_result
+import RAI
+using RAI: Context, HTTPError, exec_async, load_config, show_result, get_transaction
 
 include("parseargs.jl")
 
 function run(database, engine, source; profile)
     conf = load_config(; profile = profile)
     ctx = Context(conf)
-    rsp = exec(ctx, database, engine, source)
-    display(rsp)
+    txn = exec_async(ctx, database, engine, source)
+    println("Transaction is created...")
+    display(txn)
     println()
 end
 

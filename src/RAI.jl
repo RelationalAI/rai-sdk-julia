@@ -69,9 +69,16 @@ export
 
 export
     exec,
+    exec_async,
     list_edbs,
     load_csv,
     load_json
+
+export
+    get_transaction,
+    get_transaction_metadata,
+    get_transaction_problems,
+    get_transaction_results
 
 export
     Relation,

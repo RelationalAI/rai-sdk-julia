@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-using Dates: DateTime
+using Dates: DateTime, Second
 
 struct AccessToken
     token::String
@@ -22,9 +22,8 @@ struct AccessToken
 end
 
 function isexpired(access_token::AccessToken)::Bool
-    expires_in = access_token.expires_in * 1000  # millis
-    expires_on = access_token.created_on + expires_in
-    return expires_on > now()
+    expires_on = access_token.created_on + Second(access_token.expires_in)
+    return expires_on < now()
 end
 
 abstract type Credentials end
