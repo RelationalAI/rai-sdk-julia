@@ -12,25 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-# Returns the user with the given email.
+# Fetch details for the given user.
 
-using RAI: Context, HTTPError, load_config, find_user
+using RAI: Context, HTTPError, load_config, delete_user
 
 include("parseargs.jl")
 
-function run(email; profile)
+function run(id; profile)
     cfg = load_config(; profile = profile)
     ctx = Context(cfg)
-    rsp = find_user(ctx, email)
+    rsp = delete_user(ctx, id)
     println(rsp)
 end
 
 function main()
     args = parseargs(
-        "email", Dict(:help => "user email", :required => true),
+        "id", Dict(:help => "user id", :required => true),
         "--profile", Dict(:help => "config profile (default: default)"))
     try
-        run(args.email; profile = args.profile)
+        run(args.id; profile = args.profile)
     catch e
         e isa HTTPError ? show(e) : rethrow()
     end
