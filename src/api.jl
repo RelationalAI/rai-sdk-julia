@@ -528,7 +528,10 @@ function _parse_multipart_fastpath_sync_response(msg)
     if results_start_idx === nothing
         results = []
     else
-        results = _extract_multipart_results_response(@view(parts[results_start_idx:end]))
+        has_metadata_info = last(parts).name == "metadata_info"
+        results_end_idx = has_metadata_info ? length(parts) - 1 : length(parts)
+        result_parts = @view(parts[results_start_idx:results_end_idx])
+        results = _extract_multipart_results_response(result_parts)
     end
 
     return Dict(
