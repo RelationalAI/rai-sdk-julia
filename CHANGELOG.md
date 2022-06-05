@@ -3,7 +3,7 @@
 ## latest
 * Added `extraHeaders` support to the SDK. This could be used as following:
 ```
-create_engine(ctx, engine; size = size, extraHeaders=Dict{String, String}("x-rai-parameter-compute-version" => "....-rai-server-binary-linux"))
+create_engine(ctx, engine; size = size, headers=["x-rai-parameter-compute-version" => "....-rai-server-binary-linux"])
 ```
 
 ## v0.0.2
