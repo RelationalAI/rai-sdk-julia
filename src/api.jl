@@ -175,6 +175,15 @@ function get_oauth_client(ctx::Context, id::AbstractString; kw...)
     return _get(ctx, joinpath(PATH_OAUTH_CLIENTS, id); kw...).client
 end
 
+# Returns the user with the given email.
+function find_user(ctx::Context, email::AbstractString; kw...)
+    rsp = list_users(ctx)
+    for item in rsp
+        item["email"] == email && return item
+    end
+    return nothing
+end
+
 function get_user(ctx::Context, userid::AbstractString; kw...)
     return _get(ctx, joinpath(PATH_USERS, userid); kw...).user
 end
@@ -519,7 +528,10 @@ function _parse_multipart_fastpath_sync_response(msg)
     if results_start_idx === nothing
         results = []
     else
-        results = _extract_multipart_results_response(@view(parts[results_start_idx:end]))
+        has_metadata_info = last(parts).name == "metadata_info"
+        results_end_idx = has_metadata_info ? length(parts) - 1 : length(parts)
+        result_parts = @view(parts[results_start_idx:results_end_idx])
+        results = _extract_multipart_results_response(result_parts)
     end
 
     return Dict(

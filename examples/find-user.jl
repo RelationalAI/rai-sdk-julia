@@ -12,24 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-# Get the userid corresponding to the given user email.
+# Returns the user with the given email.
 
-using RAI: Context, HTTPError, load_config, list_users
+using RAI: Context, HTTPError, load_config, find_user
 
 include("parseargs.jl")
-
-function get_userid(ctx, email)
-    rsp = list_users(ctx)
-    for item in rsp
-        item["email"] == email && return item["id"]
-    end
-    return nothing
-end
 
 function run(email; profile)
     cfg = load_config(; profile = profile)
     ctx = Context(cfg)
-    rsp = get_userid(ctx, email)
+    rsp = find_user(ctx, email)
     println(rsp)
 end
 
