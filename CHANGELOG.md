@@ -4,9 +4,9 @@
 
 * Add find_user to api.jl
 * Rename examples/get-userid.jl to examples/find-user.jl
-* Added `extraHeaders` support to the SDK. This could be used as following:
+* Fixed bug in support for custom extra `headers` in SDK. For example:
 ```
-create_engine(ctx, engine; size = size, headers=["x-rai-parameter-compute-version" => "....-rai-server-binary-linux"])
+create_engine(ctx, engine; size = size, headers=["my-custom-header" => "custom header value"])
 ```
 
 ## v0.0.2
