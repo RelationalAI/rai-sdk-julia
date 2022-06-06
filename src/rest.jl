@@ -64,6 +64,11 @@ function _user_agent()
 end
 
 # Ensures that the given headers contain the required values.
+function _ensure_headers!(h)
+    h = HTTP.Headers(h)
+    return _ensure_headers!(h)
+end
+
 function _ensure_headers!(h::HTTP.Headers = HTTP.Headers())::HTTP.Headers
     _haskeyfold(h, "accept") || push!(h, "Accept" => "application/json")
     _haskeyfold(h, "content-type") || push!(h, "Content-Type" => "application/json")
@@ -120,7 +125,7 @@ function request(
     headers = h, query = nothing, body = b, kw...
 )::HTTP.Response
     isnothing(body) && (body = UInt8[])
-    _ensure_headers!(headers)
+    headers = _ensure_headers!(headers)
     _authenticate!(ctx, headers)
     opts = (redirect = false, retry = false)
     return HTTP.request(method, url, headers; query = query, body = body, opts..., kw...)
