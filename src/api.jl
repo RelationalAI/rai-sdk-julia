@@ -30,6 +30,7 @@ const PATH_OAUTH_CLIENTS = "/oauth-clients"
 const PATH_TRANSACTION = "/transaction"
 const PATH_ASYNC_TRANSACTIONS = "/transactions"
 const PATH_USERS = "/users"
+const ARROW_CONTENT_TYPE = "application/vnd.apache.arrow.stream"
 
 struct HTTPError <: Exception
     status_code::Int
@@ -506,7 +507,7 @@ end
 function get_transaction_results(ctx::Context, id::AbstractString; kw...)
     path = PATH_ASYNC_TRANSACTIONS * "/$id/results"
     path = _mkurl(ctx, path)
-    rsp = request(ctx, "GET", path; kw...)
+    rsp = @mock request(ctx, "GET", path; kw...)
     content_type = HTTP.header(rsp, "Content-Type")
     if !occursin("multipart/form-data", content_type)
         throw(HTTPError(400, "Unexpected response content-type for rsp:\n$rsp"))
@@ -551,6 +552,7 @@ end
 function _extract_multipart_results_response(parts)
     return [
         (part.name => Arrow.Table(part.data)) for part in parts
+            if part.contenttype == ARROW_CONTENT_TYPE
     ]
 end
 
