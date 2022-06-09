@@ -524,16 +524,7 @@ function _parse_multipart_fastpath_sync_response(msg)
 
     problems_idx = findfirst(p->p.name == "problems", parts)
     problems = JSON3.read(parts[problems_idx])
-
-    results_start_idx = findfirst(p->startswith(p.name, '/'), parts)
-    if results_start_idx === nothing
-        results = []
-    else
-        has_metadata_info = last(parts).name == "metadata_info"
-        results_end_idx = has_metadata_info ? length(parts) - 1 : length(parts)
-        result_parts = @view(parts[results_start_idx:results_end_idx])
-        results = _extract_multipart_results_response(result_parts)
-    end
+    results = _extract_multipart_results_response(parts)
 
     return Dict(
         "transaction" => JSON3.read(parts[1]),
