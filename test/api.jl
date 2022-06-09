@@ -23,6 +23,26 @@ const v2_get_results_response() = join([
         "\xff\xff\xff\xffx\0\0\0\x10\0\0\0\0\0\n\0\f\0\n\0\b\0\x04\0\n\0\0\0\x10\0\0\0\x01\0\x04\0\b\0\b\0\0\0\x04\0\b\0\0\0\x04\0\0\0\x01\0\0\0\x14\0\0\0\x10\0\x14\0\x10\0\0\0\x0e\0\b\0\0\0\x04\0\x10\0\0\0\x10\0\0\0\x18\0\0\0\0\0\x02\0\x1c\0\0\0\0\0\0\0\b\0\f\0\b\0\a\0\b\0\0\0\0\0\0\x01@\0\0\0\x02\0\0\0v1\0\0\xff\xff\xff\xff\x88\0\0\0\x14\0\0\0\0\0\0\0\f\0\x16\0\x14\0\x12\0\f\0\x04\0\f\0\0\0\b\0\0\0\0\0\0\0\x14\0\0\0\0\0\x03\0\x04\0\n\0\x18\0\f\0\b\0\x04\0\n\0\0\0\x14\0\0\08\0\0\0\x01\0\0\0\0\0\0\0\0\0\0\0\x02\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\b\0\0\0\0\0\0\0\0\0\0\0\x01\0\0\0\x01\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\x04\0\0\0\0\0\0\0\xff\xff\xff\xff\0\0\0\0",
     ], "\r\n")
 
+const v2_get_relation_count_response() = join([
+        "--8a89e52be8efe57f0b68ea75388314a3",
+        "Content-Disposition: form-data; name=\"relation-count\"; filename=\"\"",
+        "Content-Type: application/json",
+        "",
+        "{\"relation_count\":1}",
+    ], "\r\n")
+
+const v2_get_transaction_results_response = HTTP.Response(200, [
+        "Content-Type" => "Content-Type: multipart/form-data; boundary=8a89e52be8efe57f0b68ea75388314a3",
+        "Transfer-Encoding" => "chunked",
+    ],
+    body = join([
+    "",
+    v2_get_results_response(),
+    v2_get_relation_count_response(),
+    "--8a89e52be8efe57f0b68ea75388314a3--",
+    "",
+], "\r\n"))
+
 const v2_fastpath_response = HTTP.Response(200, [
         "Content-Type" => "Content-Type: multipart/form-data; boundary=8a89e52be8efe57f0b68ea75388314a3",
         "Transfer-Encoding" => "chunked",
@@ -95,6 +115,16 @@ end
             @test length(rsp["results"]) == 1
             @test rsp["results"][1][1] == "/:output/Int64"
             @test collect(rsp["results"][1][2]) == collect(expected_data)
+        end
+    end
+
+    @testset "get_transaction_results" begin
+        patch = make_patch(v2_get_transaction_results_response)
+
+        apply(patch) do
+            rsp = RAI.get_transaction_results(ctx, "fake-txn-id")
+            @test !isempty(rsp)
+            @test rsp[1][2] isa Arrow.Table
         end
     end
 end
