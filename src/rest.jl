@@ -69,7 +69,7 @@ function _ensure_headers!(h)
     return _ensure_headers!(h)
 end
 
-function _ensure_headers!(h::HTTP.Headers = HTTP.Headers())::HTTP.Headers
+function _ensure_headers!(h::HTTP.Headers=HTTP.Headers())::HTTP.Headers
     _haskeyfold(h, "accept") || push!(h, "Accept" => "application/json")
     _haskeyfold(h, "content-type") || push!(h, "Content-Type" => "application/json")
     _haskeyfold(h, "user-agent") || push!(h, "User-Agent" => _user_agent())
@@ -85,7 +85,7 @@ function get_access_token(ctx::Context, creds::ClientCredentials)::AccessToken
         "audience": "https://$(ctx.host)",
         "grant_type": "client_credentials"
     }"""
-    opts = (readtimeout = 5, redirect = false, retry = false)
+    opts = (readtimeout=5, redirect=false, retry=false)
     rsp = HTTP.request("POST", url, h, body; opts...)
     data = JSON3.read(rsp.body)
     return AccessToken(data.access_token, data.scope, data.expires_in, now())
@@ -119,14 +119,23 @@ function _authenticate!(
     return nothing
 end
 
+function get_xrai_headers_from_env_vars(headers::HTTP.Headers)
+    for (var_name, var_value) in ENV
+        if startswith(var_name, "X_RAI_PARAMETER_")
+            header_name = lowercase(replace(var_name, "_" => "-"))
+            push!(headers, header_name => var_value)
+        end
+    end
+end
 # Note, this function is deliberately patterend on the HTTP.jl request funciton.
 function request(
-    ctx::Context, method, url, h = HTTP.Header[], b = UInt8[];
-    headers = h, query = nothing, body = b, kw...
+    ctx::Context, method, url, h=HTTP.Header[], b=UInt8[];
+    headers=h, query=nothing, body=b, kw...
 )::HTTP.Response
     isnothing(body) && (body = UInt8[])
     headers = _ensure_headers!(headers)
     _authenticate!(ctx, headers)
-    opts = (redirect = false, retry = false)
-    return HTTP.request(method, url, headers; query = query, body = body, opts..., kw...)
+    get_xrai_headers_from_env_vars(headers)
+    opts = (redirect=false, retry=false)
+    return HTTP.request(method, url, headers; query=query, body=body, opts..., kw...)
 end
