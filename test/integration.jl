@@ -23,13 +23,13 @@ rnd_test_name() = "julia-sdk-" * string(UUIDs.uuid4())
 
 # Poll until the execution of `f` is truthy. Polling is done in an interval of 1 second and
 # for a maximum of 120 seconds.
-function poll_until(f; interval=1)
+function poll_until(f; interval=1, timeout=300)
     n = 0
     while !f()
         n += 1
         sleep(interval)
-        if n >= 120
-            throw("Timeout of 120 seconds reached in `poll_until`.")
+        if n >= timeout 
+            throw("Timeout of $timeout seconds reached in `poll_until`.")
         end
     end
 end
