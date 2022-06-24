@@ -22,6 +22,10 @@ using Test
     include("api.jl")
 end
 
+@testset "integration.jl" begin
+    include("integration.jl")
+end
+
 # def output =
 #     1, "foo", 3.4, :foo;
 #     2, "bar", 5.6, :foo
