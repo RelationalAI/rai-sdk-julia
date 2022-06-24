@@ -73,8 +73,8 @@ end
 # If the env vars are not properly set this will fail!
 CTX = test_context()
 
-with_engine(CTX; existing_engine="julia-sdk-858470c3-158c-40d4-9add-9fa6b8fe977b") do engine_name
-    with_database(CTX, engine_name; existing_database="julia-sdk-858470c3-158c-40d4-9add-9fa6b8fe977b") do database_name
+with_engine(CTX) do engine_name
+    with_database(CTX, engine_name) do database_name
 
         # -----------------------------------
         # execution
