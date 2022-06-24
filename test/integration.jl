@@ -51,7 +51,14 @@ function with_engine(f, ctx; existing_engine=nothing)
     catch
         rethrow()
     finally
-        isnothing(existing_engine) && delete_engine(ctx, engine_name)
+        # Engines cannot be deleted if they are still provisioning. We have to at least wait
+        # until they are ready.
+        if isnothing(existing_engine)
+            poll_until() do
+                get_engine(ctx, engine_name)[:state] == "PROVISIONED"
+            end
+            delete_engine(ctx, engine_name)
+        end
     end
 end
 
