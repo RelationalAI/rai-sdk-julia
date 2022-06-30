@@ -22,7 +22,7 @@ end
 rnd_test_name() = "julia-sdk-" * string(UUIDs.uuid4())
 
 # Poll until the execution of `f` is truthy. Polling is done in an interval of 1 second and
-# for a maximum of 120 seconds.
+# for a maximum of 300 seconds.
 function poll_until(f; interval=1, timeout=300)
     n = 0
     while !f()
@@ -35,7 +35,7 @@ function poll_until(f; interval=1, timeout=300)
 end
 
 # Creates an engine and executes `f` when the engine is ready. Deletes the engine when
-# finished. An already existing engine can be supplied to improve iteration times.
+# finished. An already existing engine can be supplied to improve local iteration times.
 function with_engine(f, ctx; existing_engine=nothing)
     engine_name = rnd_test_name()
     if isnothing(existing_engine)
@@ -63,8 +63,8 @@ function with_engine(f, ctx; existing_engine=nothing)
 end
 
 # Creates a database and executes `f` with the name of the created database.  Deletes the
-# database when finished. An already existing database can be supplied to improve iteration
-# times.
+# database when finished. An already existing database can be supplied to improve local
+# iteration times.
 function with_database(f, ctx, engine_name; existing_database=nothing)
     isnothing(existing_database) &&
         create_database(ctx, engine_name, engine_name; overwrite=true)
