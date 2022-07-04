@@ -15,7 +15,6 @@
 # Functions for accessing transaction results, including an implementation
 # of the Tables.jl interfaces.
 
-
 import JSON3
 import Tables
 
