@@ -26,14 +26,14 @@ struct TransactionAsyncResult
     transaction::JSON3.Object
     metadata::JSON3.Array
     problems::JSON3.Array
-    result::Vector{Pair{String, Arrow.Table}}
+    results::Vector{Pair{String, Arrow.Table}}
 
     TransactionAsyncResult(
         transaction::JSON3.Object,
         metadata::JSON3.Array,
         problems::JSON3.Array,
-        result::Any
-    ) = new(transaction, metadata, problems, result)
+        results::Any
+    ) = new(transaction, metadata, problems, results)
 end
 
 _data(result::TransactionResult) = getfield(result, :_data)
@@ -77,12 +77,12 @@ function Base.show(io::IO, rsp::TransactionAsyncResult)
         :transaction => rsp.transaction,
         :metadata => rsp.metadata,
         :problems => rsp.problems,
-        :result => [
+        :results => [
             (res.first => [
                 (col => res.second[col])
                     for col in keys(res.second)
             ])
-                for res in rsp.result]
+                for res in rsp.results]
     )
 
     show(io, out)
