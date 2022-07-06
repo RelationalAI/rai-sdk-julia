@@ -22,20 +22,6 @@ struct TransactionResult
     _data::JSON3.Object
 end
 
-struct TransactionAsyncResult
-    transaction::JSON3.Object
-    metadata::JSON3.Array
-    problems::JSON3.Array
-    results::Vector{Pair{String, Arrow.Table}}
-
-    TransactionAsyncResult(
-        transaction::JSON3.Object,
-        metadata::JSON3.Array,
-        problems::JSON3.Array,
-        results::Any
-    ) = new(transaction, metadata, problems, results)
-end
-
 _data(result::TransactionResult) = getfield(result, :_data)
 
 Base.getindex(result::TransactionResult, key) = _data(result)[key]
@@ -72,26 +58,8 @@ function Base.show(io::IO, result::TransactionResult)
     show_problems(result)
 end
 
-function Base.show(io::IO, rsp::TransactionAsyncResult)
-    out = (
-        "transaction" => rsp.transaction,
-        "metadata" => rsp.metadata,
-        "problems" => rsp.problems,
-        "results" => rsp.results
-    )
-
-    show(io, out)
-end
-
-function Base.show(io::IO, table::Arrow.Table)
-    show(io, [(col => table[col]) for col in keys(table) ])
-end
-
 show_result(io::IO, rsp::JSON3.Object) = show(io, TransactionResult(rsp))
 show_result(rsp::JSON3.Object) = show(stdout, TransactionResult(rsp))
-
-show_result(io::IO, rsp::TransactionAsyncResult) = show(io, rsp)
-show_result(rsp::TransactionAsyncResult) = show(stdout, rsp)
 
 """
     show_problems([io::IO], rsp)

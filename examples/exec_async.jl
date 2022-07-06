@@ -30,7 +30,7 @@ function run(database, engine, source; profile)
     ctx = Context(conf)
     txn = exec_async(ctx, database, engine, source)
     println("Transaction is created...")
-    show(txn)
+    display(txn)
     println()
 end
 

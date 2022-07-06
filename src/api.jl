@@ -421,8 +421,12 @@ function exec(ctx::Context, database::AbstractString, engine::AbstractString, so
             m = @spawn get_transaction_metadata(ctx, id)
             p = @spawn get_transaction_problems(ctx, id)
             r = @spawn get_transaction_results(ctx, id)
-
-            return TransactionAsyncResult(fetch(t), fetch(m), fetch(p), fetch(r))
+            return Dict(
+                "transaction" => fetch(t),
+                "metadata" => fetch(m),
+                "problems" => fetch(p),
+                "results" => fetch(r),
+            )
         end
     catch
         @info "TXN" txn
@@ -518,14 +522,16 @@ function _parse_multipart_fastpath_sync_response(msg)
     @assert parts[1].name == "transaction"
     @assert parts[2].name == "metadata"
 
-    transaction = JSON3.read(parts[1])
-    metadata = JSON3.read(parts[2])
-
     problems_idx = findfirst(p->p.name == "problems", parts)
     problems = JSON3.read(parts[problems_idx])
     results = _extract_multipart_results_response(parts)
 
-    return TransactionAsyncResult(transaction, metadata, problems, results)
+    return Dict(
+        "transaction" => JSON3.read(parts[1]),
+        "metadata" => JSON3.read(parts[2]),
+        "problems" => problems,
+        "results" => results,
+    )
 end
 
 function _parse_multipart_results_response(msg)
