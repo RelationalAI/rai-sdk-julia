@@ -58,6 +58,10 @@ function Base.show(io::IO, result::TransactionResult)
     show_problems(result)
 end
 
+function Base.show(io::IO, table::Arrow.Table)
+    show(io, [(col => table[col]) for col in keys(table) ])
+end
+
 show_result(io::IO, rsp::JSON3.Object) = show(io, TransactionResult(rsp))
 show_result(rsp::JSON3.Object) = show(stdout, TransactionResult(rsp))
 
