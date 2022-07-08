@@ -22,6 +22,20 @@ struct TransactionResult
     _data::JSON3.Object
 end
 
+struct TransactionResponse
+    transaction::JSON3.Object
+    metadata::Union{JSON3.Array,Nothing}
+    problems::Union{JSON3.Array,Nothing}
+    results::Union{Vector{Pair{String, Arrow.Table}},Nothing}
+
+    TransactionResponse(
+        transaction::JSON3.Object,
+        metadata::Union{JSON3.Array,Nothing},
+        problems::Union{JSON3.Array,Nothing},
+        results::Union{Vector{Pair{String, Arrow.Table}},Nothing}
+    ) = new(transaction, metadata, problems, results)
+end
+
 _data(result::TransactionResult) = getfield(result, :_data)
 
 Base.getindex(result::TransactionResult, key) = _data(result)[key]
@@ -58,12 +72,18 @@ function Base.show(io::IO, result::TransactionResult)
     show_problems(result)
 end
 
-function Base.show(io::IO, table::Arrow.Table)
-    show(io, [(col => table[col]) for col in keys(table) ])
-end
-
 show_result(io::IO, rsp::JSON3.Object) = show(io, TransactionResult(rsp))
 show_result(rsp::JSON3.Object) = show(stdout, TransactionResult(rsp))
+
+function show_result(rsp::TransactionResponse)
+    rsp.metadata === nothing && return
+    rsp.results === nothing && return
+
+    for index in 1:length(rsp.metadata)
+        println(rsp.metadata[index]["relationId"])
+        println(collect(zip(rsp.results[index][2]))[1])
+    end
+end
 
 """
     show_problems([io::IO], rsp)

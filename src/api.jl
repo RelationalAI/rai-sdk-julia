@@ -399,7 +399,7 @@ Dict{String, Any} with 4 entries:
 ```
 """
 function exec(ctx::Context, database::AbstractString, engine::AbstractString, source; inputs = nothing, readonly = false, kw...)
-    txn = exec_async(ctx, database, engine, source; inputs=inputs, readonly=readonly, kw...)
+    transactionResponse = exec_async(ctx, database, engine, source; inputs=inputs, readonly=readonly, kw...)
     try
         backoff = Base.ExponentialBackOff(
                 n = typemax(Int),
@@ -407,6 +407,7 @@ function exec(ctx::Context, database::AbstractString, engine::AbstractString, so
                 factor = 1.1,
                 max_delay = 120,  # 2 min
             )
+        txn = transactionResponse.transaction
         for duration in backoff
             transaction_is_done(txn) && break
 
@@ -421,12 +422,8 @@ function exec(ctx::Context, database::AbstractString, engine::AbstractString, so
             m = @spawn get_transaction_metadata(ctx, id)
             p = @spawn get_transaction_problems(ctx, id)
             r = @spawn get_transaction_results(ctx, id)
-            return Dict(
-                "transaction" => fetch(t),
-                "metadata" => fetch(m),
-                "problems" => fetch(p),
-                "results" => fetch(r),
-            )
+
+            return TransactionResponse(fetch(t), fetch(m), fetch(p), fetch(r))
         end
     catch
         @info "TXN" txn
@@ -461,9 +458,8 @@ function _parse_response(rsp)
     if lowercase(content_type) == "application/json"
         content = HTTP.body(rsp)
         # async mode
-        return Dict(
-            "transaction" => JSON3.read(content),
-        )
+        txn = JSON3.read(content)
+        return TransactionResponse(txn, nothing, nothing, nothing)
     elseif occursin("multipart/form-data", lowercase(content_type))
         # sync mode
         return _parse_multipart_fastpath_sync_response(rsp)
@@ -522,16 +518,13 @@ function _parse_multipart_fastpath_sync_response(msg)
     @assert parts[1].name == "transaction"
     @assert parts[2].name == "metadata"
 
+    transaction = JSON3.read(parts[1])
+    metadata = JSON3.read(parts[2])
     problems_idx = findfirst(p->p.name == "problems", parts)
     problems = JSON3.read(parts[problems_idx])
     results = _extract_multipart_results_response(parts)
 
-    return Dict(
-        "transaction" => JSON3.read(parts[1]),
-        "metadata" => JSON3.read(parts[2]),
-        "problems" => problems,
-        "results" => results,
-    )
+    return TransactionResponse(transaction, metadata, problems, results)
 end
 
 function _parse_multipart_results_response(msg)
