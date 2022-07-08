@@ -81,7 +81,7 @@ function show_result(rsp::TransactionResponse)
 
     for index in 1:length(rsp.metadata)
         println(rsp.metadata[index]["relationId"])
-        println(collect(zip(rsp.results[index][2]))[1])
+        println(collect(zip(rsp.results[index]...)))
     end
 end
 
