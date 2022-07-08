@@ -426,7 +426,7 @@ function exec(ctx::Context, database::AbstractString, engine::AbstractString, so
             return TransactionResponse(fetch(t), fetch(m), fetch(p), fetch(r))
         end
     catch
-        @info "TXN" txn
+        isdefined(txn) && @info "TXN" txn
         # Always print out the transaction id so that users can still get the txn ID even
         # if there's an error during polling (such as an InterruptException).
         #@info """Exception while polling for transaction:\n"id": $(repr(transaction_id(txn)))"""

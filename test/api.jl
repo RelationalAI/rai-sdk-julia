@@ -3,6 +3,8 @@ using Test
 import HTTP, Arrow
 using Mocking
 
+using RAI: TransactionResponse
+
 Mocking.activate()
 
 # -----------------------------------
@@ -124,5 +126,21 @@ end
             @test !isempty(rsp)
             @test rsp[1][2] isa Arrow.Table
         end
+    end
+end
+
+@testset "show_result" begin
+    ctx = Context("region", "scheme", "host", "2342", nothing)
+    patch = make_patch(v2_fastpath_response)
+
+    apply(patch) do
+        rsp = RAI.exec_async(ctx, "engine", "database", "2+2")
+        @test rsp isa TransactionResponse
+
+        io = IOBuffer()
+        show_result(io, rsp)
+        @test String(take!(io)) === """/:output/Int64
+         (4,)
+        """
     end
 end
