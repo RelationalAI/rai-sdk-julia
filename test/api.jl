@@ -3,6 +3,8 @@ using Test
 import HTTP, Arrow
 using Mocking
 
+using RAI: TransactionResponse
+
 Mocking.activate()
 
 # -----------------------------------
@@ -84,9 +86,7 @@ end
 
         apply(patch) do
             rsp = RAI.exec_async(ctx, "engine", "database", "2+2")
-            @test rsp == Dict(
-                "transaction" => JSON3.read("""{"id":"1fc9001b-1b88-8685-452e-c01bc6812429","state":"CREATED"}""")
-            )
+            @test rsp.transaction == JSON3.read("""{"id":"1fc9001b-1b88-8685-452e-c01bc6812429","state":"CREATED"}""")
         end
     end
 
@@ -95,26 +95,26 @@ end
 
         apply(patch) do
             rsp = RAI.exec_async(ctx, "engine", "database", "2+2")
-            @test rsp["transaction"] == JSON3.read("""{
+            @test rsp.transaction == JSON3.read("""{
                     "id": "a3e3bc91-0a98-50ba-733c-0987e160eb7d",
                     "results_format_version": "2.0.1",
                     "state": "COMPLETED"
                 }""")
-            @test rsp["metadata"] == [JSON3.read("""{
+            @test rsp.metadata == [JSON3.read("""{
                 "relationId": "/:output/Int64",
                     "types": [
                                 ":output",
                                 "Int64"
                             ]
             }""")]
-            @test rsp["problems"] == Union{}[]
+            @test rsp.problems == Union{}[]
 
             # Test for the expected arrow data:
             expected_data = make_arrow_table([4])
             # Arrow.Tables can't be compared via == (https://github.com/apache/arrow-julia/issues/310)
-            @test length(rsp["results"]) == 1
-            @test rsp["results"][1][1] == "/:output/Int64"
-            @test collect(rsp["results"][1][2]) == collect(expected_data)
+            @test length(rsp.results) == 1
+            @test rsp.results[1][1] == "/:output/Int64"
+            @test collect(rsp.results[1][2]) == collect(expected_data)
         end
     end
 
@@ -126,5 +126,21 @@ end
             @test !isempty(rsp)
             @test rsp[1][2] isa Arrow.Table
         end
+    end
+end
+
+@testset "show_result" begin
+    ctx = Context("region", "scheme", "host", "2342", nothing)
+    patch = make_patch(v2_fastpath_response)
+
+    apply(patch) do
+        rsp = RAI.exec_async(ctx, "engine", "database", "2+2")
+        @test rsp isa TransactionResponse
+
+        io = IOBuffer()
+        show_result(io, rsp)
+        @test String(take!(io)) === """/:output/Int64
+         (4,)
+        """
     end
 end
