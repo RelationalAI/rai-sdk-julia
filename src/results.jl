@@ -75,13 +75,23 @@ end
 show_result(io::IO, rsp::JSON3.Object) = show(io, TransactionResult(rsp))
 show_result(rsp::JSON3.Object) = show(stdout, TransactionResult(rsp))
 
-function show_result(rsp::TransactionResponse)
+show_result(rsp::TransactionResponse) = show_result(stdout, rsp)
+function show_result(io::IO, rsp::TransactionResponse)
     rsp.metadata === nothing && return
     rsp.results === nothing && return
 
-    for index in 1:length(rsp.metadata)
-        println(rsp.metadata[index]["relationId"])
-        println(collect(zip(rsp.results[index]...)))
+    for index in eachindex(rsp.metadata)
+        println(io, rsp.metadata[index]["relationId"])
+        tuples = zip(rsp.results[index][2]...)
+        # Reuse julia's array printing function to print this array of tuples.
+        Base.print_array(io, collect(tuples))
+
+        # Print trailing newline
+        if index !== last(eachindex(rsp.metadata))
+            println(io, "\n")
+        else
+            println(io, "")
+        end
     end
 end
 
