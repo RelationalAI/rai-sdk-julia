@@ -84,9 +84,7 @@ end
 
         apply(patch) do
             rsp = RAI.exec_async(ctx, "engine", "database", "2+2")
-            @test rsp == Dict(
-                "transaction" => JSON3.read("""{"id":"1fc9001b-1b88-8685-452e-c01bc6812429","state":"CREATED"}""")
-            )
+            @test rsp.transaction == JSON3.read("""{"id":"1fc9001b-1b88-8685-452e-c01bc6812429","state":"CREATED"}""")
         end
     end
 
