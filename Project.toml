@@ -1,6 +1,6 @@
 name = "RAI"
 uuid = "9c30249a-7e08-11ec-0e99-a323e937e79f"
-version = "0.0.4"
+version = "0.1.0"
 
 [deps]
 ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
