@@ -400,6 +400,9 @@ Dict{String, Any} with 4 entries:
 """
 function exec(ctx::Context, database::AbstractString, engine::AbstractString, source; inputs = nothing, readonly = false, kw...)
     transactionResponse = exec_async(ctx, database, engine, source; inputs=inputs, readonly=readonly, kw...)
+    if transactionResponse.results !== nothing
+        return transactionResponse
+    end
     txn = transactionResponse.transaction
     try
         backoff = Base.ExponentialBackOff(
@@ -414,17 +417,13 @@ function exec(ctx::Context, database::AbstractString, engine::AbstractString, so
             txn = get_transaction(ctx, transaction_id(txn))
             sleep(duration)
         end
-        if haskey(txn, "results")
-            return txn
-        else
-            id = transaction_id(txn)
-            t = @spawn get_transaction(ctx, id)
-            m = @spawn get_transaction_metadata(ctx, id)
-            p = @spawn get_transaction_problems(ctx, id)
-            r = @spawn get_transaction_results(ctx, id)
+        id = transaction_id(txn)
+        t = @spawn get_transaction(ctx, id)
+        m = @spawn get_transaction_metadata(ctx, id)
+        p = @spawn get_transaction_problems(ctx, id)
+        r = @spawn get_transaction_results(ctx, id)
 
-            return TransactionResponse(fetch(t), fetch(m), fetch(p), fetch(r))
-        end
+        return TransactionResponse(fetch(t), fetch(m), fetch(p), fetch(r))
     catch
         @error "Client-side error while executing transaction:" transaction=txn
         # Always print out the transaction id so that users can still get the txn ID even
