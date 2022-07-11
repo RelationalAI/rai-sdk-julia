@@ -8,7 +8,7 @@ The RelationalAI (RAI) SDK for Julia enables developers to access the RAI REST A
 
 ### Installation
 
-The package can be installed from source using the Julia REPL, using the package manager.
+The package can be installed from source using the Julia REPL, through the package manager.
 
 ```julia
 julia> using Pkg; Pkg.add("RAI")
