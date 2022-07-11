@@ -14,8 +14,8 @@ The package can be installed from source using the Julia REPL, using the package
 julia> using Pkg; Pkg.add("RAI")
 ```
 or
-```julia
-(project) pkg> add RAI
+```
+] add RAI
 ```
 
 ### Create a configuration file
