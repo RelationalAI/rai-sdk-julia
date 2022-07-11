@@ -1,6 +1,7 @@
 using RAI
 using Test
 import HTTP, Arrow
+using JSON3
 using Mocking
 
 using RAI: TransactionResponse
@@ -143,4 +144,40 @@ end
          (4,)
         """
     end
+end
+
+struct NetworkError code::Int end
+function make_fail_second_time_patch(fail_code)
+    request_idx = 0
+    return (ctx::Context, args...; kw...) -> begin
+        request_idx += 1
+        if request_idx == 1
+            return v2_async_response
+        else
+            throw(NetworkError(fail_code))
+        end
+    end
+end
+
+@testset "error handling" begin
+    ctx = Context("region", "scheme", "host", "2342", nothing)
+    patch = @patch RAI.request(ctx::Context, args...; kw...) = throw(NetworkError(404))
+
+    apply(patch) do
+        @test_throws NetworkError(404) RAI.exec(ctx, "engine", "db", "2+2")
+    end
+
+    # Test for an error thrown _after_ the transaction is created, before it completes.
+    sync_error_patch = Mocking.Patch(RAI.request, make_fail_second_time_patch(500))
+
+    # See https://discourse.julialang.org/t/how-to-test-the-value-of-a-variable-from-info-log/37380/3
+    # for an explanation of this logs-testing pattern.
+    logs, _ = Test.collect_test_logs() do
+        apply(sync_error_patch) do
+            @test_throws NetworkError(500) RAI.exec(ctx, "engine", "db", "2+2")
+        end
+    end
+    sym, val = collect(pairs(logs[1].kwargs))[1]
+    @test sym ≡ :transaction
+    @test val == JSON3.read("""{"id":"1fc9001b-1b88-8685-452e-c01bc6812429","state":"CREATED"}""")
 end

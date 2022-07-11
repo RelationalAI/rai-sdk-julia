@@ -73,7 +73,7 @@ end
 function _request(ctx::Context, method, path; query = nothing, body = UInt8[], kw...)
     # _print_request(method, path, query, body);
     try
-        rsp = request(ctx, method, _mkurl(ctx, path); query = query, body = body, kw...)
+        rsp = @mock request(ctx, method, _mkurl(ctx, path); query = query, body = body, kw...)
         return JSON3.read(rsp.body)
     catch e
         if e isa HTTP.ExceptionRequest.StatusError
@@ -400,6 +400,7 @@ Dict{String, Any} with 4 entries:
 """
 function exec(ctx::Context, database::AbstractString, engine::AbstractString, source; inputs = nothing, readonly = false, kw...)
     transactionResponse = exec_async(ctx, database, engine, source; inputs=inputs, readonly=readonly, kw...)
+    txn = transactionResponse.transaction
     try
         backoff = Base.ExponentialBackOff(
                 n = typemax(Int),
@@ -407,7 +408,6 @@ function exec(ctx::Context, database::AbstractString, engine::AbstractString, so
                 factor = 1.1,
                 max_delay = 120,  # 2 min
             )
-        txn = transactionResponse.transaction
         for duration in backoff
             transaction_is_done(txn) && break
 
@@ -426,7 +426,7 @@ function exec(ctx::Context, database::AbstractString, engine::AbstractString, so
             return TransactionResponse(fetch(t), fetch(m), fetch(p), fetch(r))
         end
     catch
-        isdefined(txn) && @info "TXN" txn
+        @error "Client-side error while executing transaction:" transaction=txn
         # Always print out the transaction id so that users can still get the txn ID even
         # if there's an error during polling (such as an InterruptException).
         #@info """Exception while polling for transaction:\n"id": $(repr(transaction_id(txn)))"""
