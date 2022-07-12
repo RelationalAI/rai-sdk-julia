@@ -83,17 +83,17 @@ with_engine(CTX) do engine_name
                 resp = exec(CTX, database_name, engine_name, query_string)
 
                 # transaction
-                @test resp["transaction"][:state] == "COMPLETED"
+                @test resp.transaction[:state] == "COMPLETED"
 
                 # metadata
                 # TODO (dba): Test new ProtoBuf metadata.
 
                 # problems
-                @test length(resp["problems"]) == 0
+                @test length(resp.problems) == 0
 
                 # results
-                @test length(resp["results"]) == 1
-                @test collect(resp["results"][1][2]) == [
+                @test length(resp.results) == 1
+                @test collect(resp.results[1][2]) == [
                     [1, 2, 3, 4, 5],
                     [1, 4, 9, 16, 25],
                     [1, 8, 27, 64, 125],
@@ -104,8 +104,10 @@ with_engine(CTX) do engine_name
             @testset "exec_async" begin
                 query_string = "x, x^2, x^3, x^4 from x in {1; 2; 3; 4; 5}"
                 resp = exec_async(CTX, database_name, engine_name, query_string)
-                @test resp["transaction"][:state] == "COMPLETED"
-                txn_id = resp["transaction"][:id]
+                txn = resp.transaction
+
+                @test txn[:state] == "COMPLETED"
+                txn_id = transaction_id(txn) 
 
                 _poll_until(; POLLING_KWARGS...) do
                     RAI.transaction_is_done(get_transaction(CTX, txn_id))
@@ -122,8 +124,8 @@ with_engine(CTX) do engine_name
 
                 # results
                 results = get_transaction_results(CTX, txn_id)
-                @test length(resp["results"]) == 1
-                @test collect(resp["results"][1][2]) == [
+                @test length(resp.results) == 1
+                @test collect(resp.results[1][2]) == [
                     [1, 2, 3, 4, 5],
                     [1, 4, 9, 16, 25],
                     [1, 8, 27, 64, 125],
@@ -150,10 +152,10 @@ with_engine(CTX) do engine_name
                     csv_data,
                 )
 
-                @test resp["transaction"][:state] == "COMPLETED"
+                @test resp.transaction[:state] == "COMPLETED"
 
                 results = Dict(
-                    exec(CTX, database_name, engine_name, "def output = $csv_relation")["results"],
+                    exec(CTX, database_name, engine_name, "def output = $csv_relation").results,
                 )
 
                 # `v2` contains the `String` columm, `v1` contains the FilePos column.
