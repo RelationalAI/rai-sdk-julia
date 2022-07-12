@@ -1,5 +1,5 @@
 using RAI
-using RAI: _poll_until
+using RAI: transaction_id, _poll_until
 
 import UUIDs
 
