@@ -92,7 +92,7 @@ with_engine(CTX) do engine_name
                 @test resp["transaction"][:state] == "COMPLETED"
 
                 # metadata
-                @test resp["metadata"][1][:relationId] == "/:output/Int64/Int64/Int64/Int64"
+                # TODO (dba): Test new ProtoBuf metadata.
 
                 # problems
                 @test length(resp["problems"]) == 0
@@ -119,7 +119,7 @@ with_engine(CTX) do engine_name
                 @test RAI.transaction_is_done(get_transaction(CTX, txn_id))
 
                 # metadata
-                @test get_transaction_metadata(CTX, txn_id)[1][:relationId] == "/:output/Int64/Int64/Int64/Int64"
+                # TODO (dba): Test new ProtoBuf metadata.
 
                 # problems
                 @test length(get_transaction_problems(CTX, txn_id)) == 0
