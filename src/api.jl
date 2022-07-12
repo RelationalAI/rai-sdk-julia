@@ -50,6 +50,38 @@ function Base.show(io::IO, e::HTTPError)
     end
 end
 
+# Polls until the execution `f()` is truthy or the maximum number of polls is
+# reached. Polling frequency is controlled by an `ExponentialBackOff`. If `throw_on_max_n`
+# is set to true, this will throw if the maximum number of iterations are reached.
+function _poll_until(
+    f;
+    n=typemax(Int), # Maximum number of polls
+    first_delay=0.5,
+    factor=1.1,
+    max_delay=120, # 2 min
+    throw_on_max_n=false,
+)
+    backoff = Base.ExponentialBackOff(
+        n=n,
+        first_delay=first_delay,
+        factor=factor,
+        max_delay=max_delay,
+    )
+
+    for duration in backoff
+        if f()
+            return nothing
+        end
+        sleep(duration)
+    end
+
+    # We have exhausted the iterator.
+    throw_on_max_n && throw("Max iteration $n reached in `_poll_until`.")
+
+    return nothing
+end
+
+
 # Returns a `Dict` constructed from the given pairs, filtering out pairs where
 # the value is `nothing`.
 function _filter(pairs::Pair...)
@@ -401,17 +433,9 @@ Dict{String, Any} with 4 entries:
 function exec(ctx::Context, database::AbstractString, engine::AbstractString, source; inputs = nothing, readonly = false, kw...)
     txn = exec_async(ctx, database, engine, source; inputs=inputs, readonly=readonly, kw...)
     try
-        backoff = Base.ExponentialBackOff(
-                n = typemax(Int),
-                first_delay = 0.5,
-                factor = 1.1,
-                max_delay = 120,  # 2 min
-            )
-        for duration in backoff
-            transaction_is_done(txn) && break
-
+        _poll_until() do
             txn = get_transaction(ctx, transaction_id(txn))
-            sleep(duration)
+            transaction_is_done(txn)
         end
         if haskey(txn, "results")
             return txn
