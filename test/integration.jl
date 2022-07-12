@@ -48,8 +48,6 @@ function with_engine(f, ctx; existing_engine=nothing)
     end
     try
         f(engine_name)
-    catch
-        rethrow()
     finally
         # Engines cannot be deleted if they are still provisioning. We have to at least wait
         # until they are ready.
@@ -70,8 +68,6 @@ function with_database(f, ctx, engine_name; existing_database=nothing)
         create_database(ctx, engine_name, engine_name; overwrite=true)
     try
         f(engine_name)
-    catch
-        rethrow()
     finally
         isnothing(existing_database) && delete_database(ctx, engine_name)
     end
