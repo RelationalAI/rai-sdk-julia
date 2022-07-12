@@ -1,8 +1,11 @@
 using RAI
 using Test
 import HTTP, Arrow
+using JSON3
 using Mocking
 using RAI: _poll_until
+
+using RAI: TransactionResponse
 
 Mocking.activate()
 
@@ -93,9 +96,7 @@ end
 
         apply(patch) do
             rsp = RAI.exec_async(ctx, "engine", "database", "2+2")
-            @test rsp == Dict(
-                "transaction" => JSON3.read("""{"id":"1fc9001b-1b88-8685-452e-c01bc6812429","state":"CREATED"}""")
-            )
+            @test rsp.transaction == JSON3.read("""{"id":"1fc9001b-1b88-8685-452e-c01bc6812429","state":"CREATED"}""")
         end
     end
 
@@ -104,26 +105,26 @@ end
 
         apply(patch) do
             rsp = RAI.exec_async(ctx, "engine", "database", "2+2")
-            @test rsp["transaction"] == JSON3.read("""{
+            @test rsp.transaction == JSON3.read("""{
                     "id": "a3e3bc91-0a98-50ba-733c-0987e160eb7d",
                     "results_format_version": "2.0.1",
                     "state": "COMPLETED"
                 }""")
-            @test rsp["metadata"] == [JSON3.read("""{
+            @test rsp.metadata == [JSON3.read("""{
                 "relationId": "/:output/Int64",
                     "types": [
                                 ":output",
                                 "Int64"
                             ]
             }""")]
-            @test rsp["problems"] == Union{}[]
+            @test rsp.problems == Union{}[]
 
             # Test for the expected arrow data:
             expected_data = make_arrow_table([4])
             # Arrow.Tables can't be compared via == (https://github.com/apache/arrow-julia/issues/310)
-            @test length(rsp["results"]) == 1
-            @test rsp["results"][1][1] == "/:output/Int64"
-            @test collect(rsp["results"][1][2]) == collect(expected_data)
+            @test length(rsp.results) == 1
+            @test rsp.results[1][1] == "/:output/Int64"
+            @test collect(rsp.results[1][2]) == collect(expected_data)
         end
     end
 
@@ -135,5 +136,69 @@ end
             @test !isempty(rsp)
             @test rsp[1][2] isa Arrow.Table
         end
+    end
+end
+
+@testset "show_result" begin
+    ctx = Context("region", "scheme", "host", "2342", nothing)
+    patch = make_patch(v2_fastpath_response)
+
+    apply(patch) do
+        rsp = RAI.exec_async(ctx, "engine", "database", "2+2")
+        @test rsp isa TransactionResponse
+
+        io = IOBuffer()
+        show_result(io, rsp)
+        @test String(take!(io)) === """/:output/Int64
+         (4,)
+        """
+    end
+end
+
+struct NetworkError code::Int end
+function make_fail_second_time_patch(first_response, fail_code)
+    request_idx = 0
+    return (ctx::Context, args...; kw...) -> begin
+        request_idx += 1
+        if request_idx == 1
+            return first_response
+        else
+            throw(NetworkError(fail_code))
+        end
+    end
+end
+
+@testset "error handling" begin
+    ctx = Context("region", "scheme", "host", "2342", nothing)
+    patch = @patch RAI.request(ctx::Context, args...; kw...) = throw(NetworkError(404))
+
+    apply(patch) do
+        @test_throws NetworkError(404) RAI.exec(ctx, "engine", "db", "2+2")
+    end
+
+    # Test for an error thrown _after_ the transaction is created, before it completes.
+    sync_error_patch = Mocking.Patch(RAI.request,
+        make_fail_second_time_patch(v2_async_response, 500))
+
+    # See https://discourse.julialang.org/t/how-to-test-the-value-of-a-variable-from-info-log/37380/3
+    # for an explanation of this logs-testing pattern.
+    logs, _ = Test.collect_test_logs() do
+        apply(sync_error_patch) do
+            @test_throws NetworkError(500) RAI.exec(ctx, "engine", "db", "2+2")
+        end
+    end
+    sym, val = collect(pairs(logs[1].kwargs))[1]
+    @test sym ≡ :transaction
+    @test val == JSON3.read("""{"id":"1fc9001b-1b88-8685-452e-c01bc6812429","state":"CREATED"}""")
+end
+
+@testset "exec with fast-path response only makes one request" begin
+    # Throw an error if the SDK attempts to make two requests to RAI API:
+    only_1_request_patch = Mocking.Patch(RAI.request,
+        make_fail_second_time_patch(v2_fastpath_response, 500))
+
+    ctx = Context("region", "scheme", "host", "2342", nothing)
+    apply(only_1_request_patch) do
+        @test RAI.exec(ctx, "engine", "db", "2+2") isa RAI.TransactionResponse
     end
 end

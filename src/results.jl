@@ -22,6 +22,20 @@ struct TransactionResult
     _data::JSON3.Object
 end
 
+struct TransactionResponse
+    transaction::JSON3.Object
+    metadata::Union{JSON3.Array,Nothing}
+    problems::Union{JSON3.Array,Nothing}
+    results::Union{Vector{Pair{String, Arrow.Table}},Nothing}
+
+    TransactionResponse(
+        transaction::JSON3.Object,
+        metadata::Union{JSON3.Array,Nothing},
+        problems::Union{JSON3.Array,Nothing},
+        results::Union{Vector{Pair{String, Arrow.Table}},Nothing}
+    ) = new(transaction, metadata, problems, results)
+end
+
 _data(result::TransactionResult) = getfield(result, :_data)
 
 Base.getindex(result::TransactionResult, key) = _data(result)[key]
@@ -60,6 +74,26 @@ end
 
 show_result(io::IO, rsp::JSON3.Object) = show(io, TransactionResult(rsp))
 show_result(rsp::JSON3.Object) = show(stdout, TransactionResult(rsp))
+
+show_result(rsp::TransactionResponse) = show_result(stdout, rsp)
+function show_result(io::IO, rsp::TransactionResponse)
+    rsp.metadata === nothing && return
+    rsp.results === nothing && return
+
+    for index in eachindex(rsp.metadata)
+        println(io, rsp.metadata[index]["relationId"])
+        tuples = zip(rsp.results[index][2]...)
+        # Reuse julia's array printing function to print this array of tuples.
+        Base.print_array(io, collect(tuples))
+
+        # Print trailing newline
+        if index !== last(eachindex(rsp.metadata))
+            println(io, "\n")
+        else
+            println(io, "")
+        end
+    end
+end
 
 """
     show_problems([io::IO], rsp)

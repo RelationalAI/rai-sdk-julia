@@ -105,7 +105,7 @@ end
 function _request(ctx::Context, method, path; query = nothing, body = UInt8[], kw...)
     # _print_request(method, path, query, body);
     try
-        rsp = request(ctx, method, _mkurl(ctx, path); query = query, body = body, kw...)
+        rsp = @mock request(ctx, method, _mkurl(ctx, path); query = query, body = body, kw...)
         return JSON3.read(rsp.body)
     catch e
         if e isa HTTP.ExceptionRequest.StatusError
@@ -431,29 +431,25 @@ Dict{String, Any} with 4 entries:
 ```
 """
 function exec(ctx::Context, database::AbstractString, engine::AbstractString, source; inputs = nothing, readonly = false, kw...)
-    txn = exec_async(ctx, database, engine, source; inputs=inputs, readonly=readonly, kw...)
+    transactionResponse = exec_async(ctx, database, engine, source; inputs=inputs, readonly=readonly, kw...)
+    if transactionResponse.results !== nothing
+        return transactionResponse
+    end
+    txn = transactionResponse.transaction
     try
         _poll_until() do
             txn = get_transaction(ctx, transaction_id(txn))
             transaction_is_done(txn)
         end
-        if haskey(txn, "results")
-            return txn
-        else
-            id = transaction_id(txn)
-            t = @spawn get_transaction(ctx, id)
-            m = @spawn get_transaction_metadata(ctx, id)
-            p = @spawn get_transaction_problems(ctx, id)
-            r = @spawn get_transaction_results(ctx, id)
-            return Dict(
-                "transaction" => fetch(t),
-                "metadata" => fetch(m),
-                "problems" => fetch(p),
-                "results" => fetch(r),
-            )
-        end
+        id = transaction_id(txn)
+        t = @spawn get_transaction(ctx, id)
+        m = @spawn get_transaction_metadata(ctx, id)
+        p = @spawn get_transaction_problems(ctx, id)
+        r = @spawn get_transaction_results(ctx, id)
+
+        return TransactionResponse(fetch(t), fetch(m), fetch(p), fetch(r))
     catch
-        @info "TXN" txn
+        @error "Client-side error while executing transaction:" transaction=txn
         # Always print out the transaction id so that users can still get the txn ID even
         # if there's an error during polling (such as an InterruptException).
         #@info """Exception while polling for transaction:\n"id": $(repr(transaction_id(txn)))"""
@@ -485,9 +481,8 @@ function _parse_response(rsp)
     if lowercase(content_type) == "application/json"
         content = HTTP.body(rsp)
         # async mode
-        return Dict(
-            "transaction" => JSON3.read(content),
-        )
+        txn = JSON3.read(content)
+        return TransactionResponse(txn, nothing, nothing, nothing)
     elseif occursin("multipart/form-data", lowercase(content_type))
         # sync mode
         return _parse_multipart_fastpath_sync_response(rsp)
@@ -546,16 +541,13 @@ function _parse_multipart_fastpath_sync_response(msg)
     @assert parts[1].name == "transaction"
     @assert parts[2].name == "metadata"
 
+    transaction = JSON3.read(parts[1])
+    metadata = JSON3.read(parts[2])
     problems_idx = findfirst(p->p.name == "problems", parts)
     problems = JSON3.read(parts[problems_idx])
     results = _extract_multipart_results_response(parts)
 
-    return Dict(
-        "transaction" => JSON3.read(parts[1]),
-        "metadata" => JSON3.read(parts[2]),
-        "problems" => problems,
-        "results" => results,
-    )
+    return TransactionResponse(transaction, metadata, problems, results)
 end
 
 function _parse_multipart_results_response(msg)
