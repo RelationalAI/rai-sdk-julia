@@ -85,7 +85,7 @@ function get_access_token(ctx::Context, creds::ClientCredentials)::AccessToken
         "audience": "https://$(ctx.host)",
         "grant_type": "client_credentials"
     }"""
-    opts = (readtimeout = 5, redirect = false, retry = false)
+    opts = (readtimeout = 5, redirect = false)
     rsp = HTTP.request("POST", url, h, body; opts...)
     data = JSON3.read(rsp.body)
     return AccessToken(data.access_token, data.scope, data.expires_in, now())
@@ -127,6 +127,6 @@ function request(
     isnothing(body) && (body = UInt8[])
     headers = _ensure_headers!(headers)
     _authenticate!(ctx, headers)
-    opts = (redirect = false, retry = false)
+    opts = (;redirect = false)
     return HTTP.request(method, url, headers; query = query, body = body, opts..., kw...)
 end
