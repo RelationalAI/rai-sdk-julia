@@ -1,13 +1,20 @@
 using RAI
+using RAI: _poll_until
 
 import UUIDs
 
 # -----------------------------------
 # context & setup
 
+# This will poll for a maximum of ~600 seconds in 14 steps.
+const POLLING_KWARGS =
+    (:n => 14, :first_delay => 1.0, :factor => 1.6, :throw_on_max_n => true)
+
 function test_context()
-    @assert all(key -> haskey(ENV, key),
-                ["CLIENT_ID", "CLIENT_SECRET", "CLIENT_CREDENTIALS_URL"])
+    @assert all(
+        key -> haskey(ENV, key),
+        ["CLIENT_ID", "CLIENT_SECRET", "CLIENT_CREDENTIALS_URL"],
+    )
 
     client_id = ENV["CLIENT_ID"]
     client_secret = ENV["CLIENT_SECRET"]
@@ -21,26 +28,13 @@ end
 
 rnd_test_name() = "julia-sdk-" * string(UUIDs.uuid4())
 
-# Poll until the execution of `f` is truthy. Polling is done in an interval of 1 second and
-# for a maximum of 300 seconds.
-function poll_until(f; interval=1, timeout=300)
-    n = 0
-    while !f()
-        n += 1
-        sleep(interval)
-        if n >= timeout 
-            throw("Timeout of $timeout seconds reached in `poll_until`.")
-        end
-    end
-end
-
 # Creates an engine and executes `f` when the engine is ready. Deletes the engine when
 # finished. An already existing engine can be supplied to improve local iteration times.
 function with_engine(f, ctx; existing_engine=nothing)
     engine_name = rnd_test_name()
     if isnothing(existing_engine)
         create_engine(ctx, engine_name)
-        poll_until() do
+        _poll_until(; POLLING_KWARGS...) do
             get_engine(ctx, engine_name)[:state] == "PROVISIONED"
         end
     else
@@ -52,7 +46,7 @@ function with_engine(f, ctx; existing_engine=nothing)
         # Engines cannot be deleted if they are still provisioning. We have to at least wait
         # until they are ready.
         if isnothing(existing_engine)
-            poll_until() do
+            _poll_until(; POLLING_KWARGS...) do
                 get_engine(ctx, engine_name)[:state] == "PROVISIONED"
             end
             delete_engine(ctx, engine_name)
@@ -99,10 +93,12 @@ with_engine(CTX) do engine_name
 
                 # results
                 @test length(resp["results"]) == 1
-                @test collect(resp["results"][1][2]) == [[1,2,3,4,5],
-                                                         [1,4,9,16,25],
-                                                         [1,8,27,64,125],
-                                                         [1,16,81,256,625]]
+                @test collect(resp["results"][1][2]) == [
+                    [1, 2, 3, 4, 5],
+                    [1, 4, 9, 16, 25],
+                    [1, 8, 27, 64, 125],
+                    [1, 16, 81, 256, 625],
+                ]
             end
 
             @testset "exec_async" begin
@@ -111,7 +107,7 @@ with_engine(CTX) do engine_name
                 @test resp["transaction"][:state] == "COMPLETED"
                 txn_id = resp["transaction"][:id]
 
-                poll_until() do
+                _poll_until(; POLLING_KWARGS...) do
                     RAI.transaction_is_done(get_transaction(CTX, txn_id))
                 end
 
@@ -127,41 +123,48 @@ with_engine(CTX) do engine_name
                 # results
                 results = get_transaction_results(CTX, txn_id)
                 @test length(resp["results"]) == 1
-                @test collect(resp["results"][1][2]) == [[1,2,3,4,5],
-                                                         [1,4,9,16,25],
-                                                         [1,8,27,64,125],
-                                                         [1,16,81,256,625]]
+                @test collect(resp["results"][1][2]) == [
+                    [1, 2, 3, 4, 5],
+                    [1, 4, 9, 16, 25],
+                    [1, 8, 27, 64, 125],
+                    [1, 16, 81, 256, 625],
+                ]
             end
 
             @testset "load_csv" begin
-                csv_data = "" * 
-	                  "cocktail,quantity,price,date\n" *
-	                  "\"martini\",2,12.50,\"2020-01-01\"\n" *
-	                  "\"sazerac\",4,14.25,\"2020-02-02\"\n" *
-	                  "\"cosmopolitan\",4,11.00,\"2020-03-03\"\n" *
-	                  "\"bellini\",3,12.25,\"2020-04-04\"\n"
+                csv_data =
+                    "" *
+                    "cocktail,quantity,price,date\n" *
+                    "\"martini\",2,12.50,\"2020-01-01\"\n" *
+                    "\"sazerac\",4,14.25,\"2020-02-02\"\n" *
+                    "\"cosmopolitan\",4,11.00,\"2020-03-03\"\n" *
+                    "\"bellini\",3,12.25,\"2020-04-04\"\n"
 
                 csv_relation = "csv"
 
-                resp = load_csv(CTX, database_name, engine_name, Symbol(csv_relation), csv_data)
+                resp = load_csv(
+                    CTX,
+                    database_name,
+                    engine_name,
+                    Symbol(csv_relation),
+                    csv_data,
+                )
 
                 @test resp["transaction"][:state] == "COMPLETED"
 
-                results =
-                    Dict(exec(CTX,
-                              database_name,
-                              engine_name,
-                              "def output = $csv_relation")["results"])
+                results = Dict(
+                    exec(CTX, database_name, engine_name, "def output = $csv_relation")["results"],
+                )
 
                 # `v2` contains the `String` columm, `v1` contains the FilePos column.
                 @test collect(results["/:output/:quantity/FilePos/String"].v2) ==
-                    ["2", "4", "4", "3"]
+                      ["2", "4", "4", "3"]
                 @test collect(results["/:output/:date/FilePos/String"].v2) ==
-                    ["2020-01-01", "2020-02-02", "2020-03-03", "2020-04-04"]
+                      ["2020-01-01", "2020-02-02", "2020-03-03", "2020-04-04"]
                 @test collect(results["/:output/:price/FilePos/String"].v2) ==
-                    ["12.50", "14.25", "11.00", "12.25"]
+                      ["12.50", "14.25", "11.00", "12.25"]
                 @test collect(results["/:output/:cocktail/FilePos/String"].v2) ==
-                    ["martini", "sazerac", "cosmopolitan", "bellini"]
+                      ["martini", "sazerac", "cosmopolitan", "bellini"]
             end
 
             @testset "load_json" begin end
@@ -190,4 +193,3 @@ end
 # -----------------------------------
 # users 
 @testset "users" begin end
-

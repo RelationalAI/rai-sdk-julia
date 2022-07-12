@@ -2,6 +2,7 @@ using RAI
 using Test
 import HTTP, Arrow
 using Mocking
+using RAI: _poll_until
 
 Mocking.activate()
 
@@ -74,6 +75,14 @@ function make_arrow_table(vals)
     Arrow.write(io, (v1=vals,))
     seekstart(io)
     return Arrow.Table(io)
+end
+
+@testset "_poll_until" begin
+    @test isnothing(_poll_until(() -> true))
+    @test isnothing(_poll_until(() -> false; n=0))
+    @test isnothing(_poll_until(() -> false; n=1))
+    @test isnothing(_poll_until(() -> true; n=1, throw_on_max_n=true))
+    @test_throws String _poll_until(() -> false; n=1, throw_on_max_n=true)
 end
 
 @testset "exec_async" begin
