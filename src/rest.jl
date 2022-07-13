@@ -50,7 +50,7 @@ end
 
 # Answers if the given `headers` contains a key that is a case insensitive
 # match for the given key.
-function _haskeyfold(headers::HTTP.Headers, key::AbstractString)::Bool
+function _haskeyfold(headers, key::AbstractString)::Bool
     key = lowercase(key)
     for (k, _) in headers
         key == lowercase(k) && return true
@@ -69,7 +69,7 @@ function _ensure_headers!(h)
     return _ensure_headers!(h)
 end
 
-function _ensure_headers!(h::HTTP.Headers = HTTP.Headers())::HTTP.Headers
+function _ensure_headers!(h = HTTP.Headers())
     _haskeyfold(h, "accept") || push!(h, "Accept" => "application/json")
     _haskeyfold(h, "content-type") || push!(h, "Content-Type" => "application/json")
     _haskeyfold(h, "user-agent") || push!(h, "User-Agent" => _user_agent())
@@ -96,7 +96,7 @@ function _get_client_credentials_url(creds::ClientCredentials)
            creds.client_credentials_url : "https://login.relationalai.com/oauth/token"
 end
 
-function _authenticate!(ctx::Context, headers::HTTP.Headers)
+function _authenticate!(ctx::Context, headers)
     if !isnothing(ctx.credentials)
         _authenticate!(ctx, ctx.credentials, headers)
     end
@@ -106,7 +106,7 @@ end
 function _authenticate!(
     ctx::Context,
     creds::ClientCredentials,
-    headers::HTTP.Headers
+    headers,
 )::Nothing
     if isnothing(creds.access_token)
         creds.access_token = get_access_token(ctx, creds)
