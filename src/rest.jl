@@ -64,11 +64,6 @@ function _user_agent()
 end
 
 # Ensures that the given headers contain the required values.
-function _ensure_headers!(h)
-    h = HTTP.Headers(h)
-    return _ensure_headers!(h)
-end
-
 function _ensure_headers!(h = HTTP.Headers())
     _haskeyfold(h, "accept") || push!(h, "Accept" => "application/json")
     _haskeyfold(h, "content-type") || push!(h, "Content-Type" => "application/json")
