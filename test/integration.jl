@@ -19,9 +19,10 @@ function test_context()
     client_id = ENV["CLIENT_ID"]
     client_secret = ENV["CLIENT_SECRET"]
     client_credentials_urls = ENV["CLIENT_CREDENTIALS_URL"]
+    audience = get(ENV, "CLIENT_AUDIENCE", nothing)
 
     credentials = ClientCredentials(client_id, client_secret, client_credentials_urls)
-    config = Config("us-east", "https", "azure.relationalai.com", "443", credentials)
+    config = Config("us-east", "https", "azure.relationalai.com", "443", credentials, audience)
 
     return Context(config)
 end
@@ -107,7 +108,7 @@ with_engine(CTX) do engine_name
                 txn = resp.transaction
 
                 @test txn[:state] == "COMPLETED"
-                txn_id = transaction_id(txn) 
+                txn_id = transaction_id(txn)
 
                 _poll_until(; POLLING_KWARGS...) do
                     RAI.transaction_is_done(get_transaction(CTX, txn_id))
@@ -175,7 +176,7 @@ with_engine(CTX) do engine_name
         end
 
         # -----------------------------------
-        # models 
+        # models
         @testset "models" begin end
     end
 end
@@ -193,5 +194,5 @@ end
 @testset "oauth" begin end
 
 # -----------------------------------
-# users 
+# users
 @testset "users" begin end
