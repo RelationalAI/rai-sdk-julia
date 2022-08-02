@@ -10,7 +10,22 @@ import UUIDs
 const POLLING_KWARGS =
     (:n => 14, :first_delay => 1.0, :factor => 1.6, :throw_on_max_n => true)
 
-function test_context()
+function test_context(profile_name = nothing)
+    # If the ENV isn't configured for testing (local development), try using the local
+    # Config file!
+    if !haskey(ENV, "CLIENT_ID")
+        if isfile(homedir()*"/.rai/config")
+            if profile_name !== nothing
+                cfg = load_config(; profile = profile_name)
+            else
+                cfg = load_config()
+            end
+            return Context(cfg)
+        end
+    end
+
+    # Otherwise, we are testing using the secrets specified in ENV variables.
+
     @assert all(
         key -> haskey(ENV, key),
         ["CLIENT_ID", "CLIENT_SECRET", "CLIENT_CREDENTIALS_URL"],
