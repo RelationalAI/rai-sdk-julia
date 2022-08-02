@@ -10,7 +10,22 @@ import UUIDs
 const POLLING_KWARGS =
     (:n => 14, :first_delay => 1.0, :factor => 1.6, :throw_on_max_n => true)
 
-function test_context()
+function test_context(profile_name = nothing)
+    # If the ENV isn't configured for testing (local development), try using the local
+    # Config file!
+    if !haskey(ENV, "CLIENT_ID")
+        if isfile(homedir()*"/.rai/config")
+            if profile_name !== nothing
+                cfg = load_config(; profile = profile_name)
+            else
+                cfg = load_config()
+            end
+            return Context(cfg)
+        end
+    end
+
+    # Otherwise, we are testing using the secrets specified in ENV variables.
+
     @assert all(
         key -> haskey(ENV, key),
         ["CLIENT_ID", "CLIENT_SECRET", "CLIENT_CREDENTIALS_URL"],
@@ -19,9 +34,10 @@ function test_context()
     client_id = ENV["CLIENT_ID"]
     client_secret = ENV["CLIENT_SECRET"]
     client_credentials_urls = ENV["CLIENT_CREDENTIALS_URL"]
+    audience = get(ENV, "CLIENT_AUDIENCE", nothing)
 
     credentials = ClientCredentials(client_id, client_secret, client_credentials_urls)
-    config = Config("us-east", "https", "azure.relationalai.com", "443", credentials)
+    config = Config("us-east", "https", "azure.relationalai.com", "443", credentials, audience)
 
     return Context(config)
 end
@@ -107,7 +123,7 @@ with_engine(CTX) do engine_name
                 txn = resp.transaction
 
                 @test txn[:state] == "COMPLETED"
-                txn_id = transaction_id(txn) 
+                txn_id = transaction_id(txn)
 
                 _poll_until(; POLLING_KWARGS...) do
                     RAI.transaction_is_done(get_transaction(CTX, txn_id))
@@ -175,7 +191,7 @@ with_engine(CTX) do engine_name
         end
 
         # -----------------------------------
-        # models 
+        # models
         @testset "models" begin end
     end
 end
@@ -193,5 +209,5 @@ end
 @testset "oauth" begin end
 
 # -----------------------------------
-# users 
+# users
 @testset "users" begin end

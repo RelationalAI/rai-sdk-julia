@@ -33,19 +33,17 @@ struct Context
     host::String
     port::String
     credentials::Union{Credentials,Nothing}
-
-    Context(region, scheme, host, port, credentials) =
-        new(region, scheme, host, port, credentials)
-
-    # todo: consider use of kwargs like we do in the python SDK
-    #   consider use of @Base.kwdef
-    function Context(cfg::Config)
-        region = !isnothing(cfg.region) ? cfg.region : "us-east"
-        scheme = !isnothing(cfg.scheme) ? cfg.scheme : "https"
-        host = !isnothing(cfg.host) ? cfg.host : "azure.relationalai.com"
-        port = !isnothing(cfg.port) ? cfg.port : "443"
-        new(region, scheme, host, port, cfg.credentials)
-    end
+    audience::String
+end
+# todo: consider use of kwargs like we do in the python SDK
+#   consider use of @Base.kwdef
+function Context(cfg::Config)
+    region = !isnothing(cfg.region) ? cfg.region : "us-east"
+    scheme = !isnothing(cfg.scheme) ? cfg.scheme : "https"
+    host = !isnothing(cfg.host) ? cfg.host : "azure.relationalai.com"
+    port = !isnothing(cfg.port) ? cfg.port : "443"
+    audience = !isnothing(cfg.audience) ? cfg.audience : "https://$(host)"
+    return Context(region, scheme, host, port, cfg.credentials, audience)
 end
 
 # Answers if the given `headers` contains a key that is a case insensitive
@@ -75,9 +73,9 @@ function get_access_token(ctx::Context, creds::ClientCredentials)::AccessToken
     url = _get_client_credentials_url(creds)
     h = _ensure_headers!()
     body = """{
-        "client_id": "$(creds.client_id)",
-        "client_secret": "$(creds.client_secret)",
-        "audience": "https://$(ctx.host)",
+        "client_id": $(repr(creds.client_id)),
+        "client_secret": $(repr(creds.client_secret)),
+        "audience": $(repr(ctx.audience)),
         "grant_type": "client_credentials"
     }"""
     opts = (readtimeout = 5, redirect = false, retry_non_idempotent = true)

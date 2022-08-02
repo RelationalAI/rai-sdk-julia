@@ -89,7 +89,7 @@ end
 end
 
 @testset "exec_async" begin
-    ctx = Context("region", "scheme", "host", "2342", nothing)
+    ctx = Context("region", "scheme", "host", "2342", nothing, "audience")
 
     @testset "async response" begin
         patch = make_patch(v2_async_response)
@@ -140,7 +140,7 @@ end
 end
 
 @testset "show_result" begin
-    ctx = Context("region", "scheme", "host", "2342", nothing)
+    ctx = Context("region", "scheme", "host", "2342", nothing, "audience")
     patch = make_patch(v2_fastpath_response)
 
     apply(patch) do
@@ -169,7 +169,7 @@ function make_fail_second_time_patch(first_response, fail_code)
 end
 
 @testset "error handling" begin
-    ctx = Context("region", "scheme", "host", "2342", nothing)
+    ctx = Context("region", "scheme", "host", "2342", nothing, "audience")
     patch = @patch RAI.request(ctx::Context, args...; kw...) = throw(NetworkError(404))
 
     apply(patch) do
@@ -197,7 +197,7 @@ end
     only_1_request_patch = Mocking.Patch(RAI.request,
         make_fail_second_time_patch(v2_fastpath_response, 500))
 
-    ctx = Context("region", "scheme", "host", "2342", nothing)
+    ctx = Context("region", "scheme", "host", "2342", nothing, "audience")
     apply(only_1_request_patch) do
         @test RAI.exec(ctx, "engine", "db", "2+2") isa RAI.TransactionResponse
     end

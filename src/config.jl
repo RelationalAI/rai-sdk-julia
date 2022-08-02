@@ -21,6 +21,7 @@ mutable struct Config
     host::Union{String,Nothing}
     port::Union{String,Nothing}
     credentials::Union{Credentials,Nothing}
+    audience::Union{String,Nothing}
 end
 
 function _load_stanza(fname::AbstractString, profile::AbstractString)
@@ -43,10 +44,11 @@ function load_config(; fname = nothing, profile = nothing)::Config
     port = _get_value(stanza, "port")
     client_id = _get_value(stanza, "client_id")
     client_secret = _get_value(stanza, "client_secret")
+    audience = _get_value(stanza, "audience")
     credentials = nothing
     if !isnothing(client_id) && !isnothing(client_secret)
         client_credentials_url = _get_value(stanza, "client_credentials_url")
         credentials = ClientCredentials(client_id, client_secret, client_credentials_url)
     end
-    return Config(region, scheme, host, port, credentials)
+    return Config(region, scheme, host, port, credentials, audience)
 end
