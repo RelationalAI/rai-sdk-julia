@@ -20,7 +20,10 @@ APIs.
 """
 module RAI
 
-const PROJECT_VERSION = v"0.0.1"
+import Pkg
+
+# Used for sending the User Agent.
+const PROJECT_VERSION = Pkg.project().version
 
 export
     AccessToken,
