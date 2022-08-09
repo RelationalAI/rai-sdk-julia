@@ -20,6 +20,7 @@
 
 import JSON3
 import Arrow
+import ProtocolBuffers
 using Base.Threads: @spawn
 
 using Mocking: Mocking, @mock  # For unit testing, by mocking API server responses
@@ -472,9 +473,14 @@ function exec_async(ctx::Context, database::AbstractString, engine::AbstractStri
     end
     body = JSON3.write(tx_body)
     path = _mkurl(ctx, PATH_ASYNC_TRANSACTIONS)
+    headers = _ensure_proto_accept_header(get(kw, :headers, []))
     rsp = @mock request(ctx, "POST", path; body = body, kw...)
     return _parse_response(rsp)
 end
+
+# We **only** support ProtoBuf metadata, so we overwrite the `Accept` header.
+_ensure_proto_accept_header(headers) =
+    collect(merge(Dict(headers), Dict("Accept" => "application/x-protobuf")))
 
 function _parse_response(rsp)
     content_type = HTTP.header(rsp, "Content-Type")
@@ -513,8 +519,12 @@ end
 
 function get_transaction_metadata(ctx::Context, id::AbstractString; kw...)
     path = PATH_ASYNC_TRANSACTIONS * "/$id/metadata"
-    rsp = _get(ctx, path; kw...)
-    return rsp
+    path = _mkurl(ctx, path)
+    headers = _ensure_proto_accept_header(get(kw, :headers, []))
+    rsp = request(ctx, "GET", path; kw..., headers)
+    d = ProtocolBuffers.ProtoDecoder(IOBuffer(rsp.body));
+    metadata = ProtocolBuffers.decode(d, Protocol_PB.MetadataInfo)
+    return metadata
 end
 
 function get_transaction_problems(ctx::Context, id::AbstractString; kw...)
