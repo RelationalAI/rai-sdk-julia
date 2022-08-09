@@ -107,7 +107,11 @@ end
 
 # TODO (dba) Workaround as `RelType` has no definite size when encoding!
 # https://github.com/Drvi/ProtocolBuffers.jl/issues/13
-function ProtocolBuffers.encode(e::ProtocolBuffers.AbstractProtoEncoder, i::Int, x::Vector{Protocol_PB.RelType})
+function ProtocolBuffers.encode(
+    e::ProtocolBuffers.AbstractProtoEncoder,
+    i::Int,
+    x::Vector{Protocol_PB.RelType},
+)
     # This is the max size of `RelType` when either the `ConstantType` or `ValueType` are
     # set!
     size = 24
