@@ -65,7 +65,14 @@ function make_proto_metadata_string()
     return String(take!(io))
 end
 
-const v2_get_results_response() = join([
+const v2_async_response = HTTP.Response(
+    200,
+    ["Content-Type" => "application/json"],
+    body="""{"id":"1fc9001b-1b88-8685-452e-c01bc6812429","state":"CREATED"}""",
+)
+
+const v2_get_results_response() = join(
+    [
         "--8a89e52be8efe57f0b68ea75388314a3",
         "Content-Disposition: form-data; name=\"/:output/Int64\"; filename=\"/:output/Int64\"",
         "Content-Type: application/vnd.apache.arrow.stream",
