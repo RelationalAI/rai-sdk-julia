@@ -50,7 +50,7 @@ _from_proto(::Type{Int8}, v) = v % Int8
 _from_proto(::Type{UInt16}, v) = v % Int16
 _from_proto(::Type{UInt8}, v) = v % Int8
 _from_proto(T::Type{UInt128}, v) = _from_uint128_proto(v)
-_from_proto(T::Type{Int128}, v) = _from_uint128_proto(v)
+_from_proto(T::Type{Int128}, v) = _from_int128_proto(v)
 
 function _from_uint128_proto(i::Protocol_PB.RelUInt128)
     return (UInt128(i.highbits) << 64) | i.lowbits
