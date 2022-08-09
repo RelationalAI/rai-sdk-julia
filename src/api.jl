@@ -549,12 +549,16 @@ function _parse_multipart_fastpath_sync_response(msg)
     #   ... HTTP.parse_multipart_form() copies the bytes into IOBuffers.
     parts = _parse_multipart_form(msg)
     @assert parts[1].name == "transaction"
-    @assert parts[2].name == "metadata"
 
     transaction = JSON3.read(parts[1])
-    metadata = JSON3.read(parts[2])
+
+    metadata_idx = findfirst(p->p.name == "metadata.proto", parts)
+    d = ProtocolBuffers.ProtoDecoder(parts[metadata_idx].data);
+    metadata = ProtocolBuffers.decode(d, Protocol_PB.MetadataInfo)
+
     problems_idx = findfirst(p->p.name == "problems", parts)
     problems = JSON3.read(parts[problems_idx])
+
     results = _extract_multipart_results_response(parts)
 
     return TransactionResponse(transaction, metadata, problems, results)

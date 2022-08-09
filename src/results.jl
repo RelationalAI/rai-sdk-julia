@@ -24,13 +24,13 @@ end
 
 struct TransactionResponse
     transaction::JSON3.Object
-    metadata::Union{JSON3.Array,Nothing}
+    metadata::Union{Protocol_PB.MetadataInfo,Nothing}
     problems::Union{JSON3.Array,Nothing}
     results::Union{Vector{Pair{String, Arrow.Table}},Nothing}
 
     TransactionResponse(
         transaction::JSON3.Object,
-        metadata::Union{JSON3.Array,Nothing},
+        metadata::Union{Protocol_PB.MetadataInfo,Nothing},
         problems::Union{JSON3.Array,Nothing},
         results::Union{Vector{Pair{String, Arrow.Table}},Nothing}
     ) = new(transaction, metadata, problems, results)
@@ -80,14 +80,14 @@ function show_result(io::IO, rsp::TransactionResponse)
     rsp.metadata === nothing && return
     rsp.results === nothing && return
 
-    for index in eachindex(rsp.metadata)
-        println(io, rsp.metadata[index]["relationId"])
-        tuples = zip(rsp.results[index][2]...)
+    for (idx, relation_metadata) in enumerate(rsp.metadata.relations)
+        show_relation_id(io, relation_metadata.relation_id)
+        tuples = zip(rsp.results[idx][2]...)
         # Reuse julia's array printing function to print this array of tuples.
         Base.print_array(io, collect(tuples))
 
         # Print trailing newline
-        if index !== last(eachindex(rsp.metadata))
+        if idx !== length(rsp.metadata.relations)
             println(io, "\n")
         else
             println(io, "")
