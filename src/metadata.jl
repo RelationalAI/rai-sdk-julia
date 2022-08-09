@@ -41,8 +41,10 @@ function value_from_proto(v::Protocol_PB.PrimitiveValue)
 end
 
 _from_proto(T::Type, v) = T(v)
-# Byte array must be copied because String takes ownership!
-_from_proto(::Type{String}, v) = Symbol(copy(v))
+# TODO (dba) Consider creating a `Symbol` here instead of a `String` as in Julia a
+# specialized, or constant, string is a `Symbol`
+# Byte array must be copied because Symbol takes ownership!
+_from_proto(::Type{String}, v) = String(copy(v))
 _from_proto(::Type{Int16}, v) = v % Int16
 _from_proto(::Type{Int8}, v) = v % Int8
 _from_proto(::Type{UInt16}, v) = v % Int16
