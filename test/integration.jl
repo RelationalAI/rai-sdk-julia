@@ -102,7 +102,17 @@ with_engine(CTX) do engine_name
                 @test resp.transaction[:state] == "COMPLETED"
 
                 # metadata
-                # TODO (dba): Test new ProtoBuf metadata.
+                @test length(resp.metadata.relations) == 1
+                # /ConstantType(Symbol, :output)/Int64/Int64/Int64/Int64
+                @test length(resp.metadata.relations[1].relation_id.arguments) == 5
+                for rel_type in resp.metadata.relations[1].relation_id.arguments[2:end]
+                    @test rel_type == RAI.Protocol_PB.RelType(
+                        RAI.Protocol_PB.Kind.PRIMITIVE_TYPE,
+                        RAI.Protocol_PB.PrimitiveType.INT_64,
+                        nothing,
+                        nothing,
+                    )
+                end
 
                 # problems
                 @test length(resp.problems) == 0
