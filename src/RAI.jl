@@ -73,6 +73,7 @@ export
 export
     exec,
     exec_async,
+    wait_until_done,
     list_edbs,
     load_csv,
     load_json
@@ -95,6 +96,7 @@ export
 include("creds.jl")
 include("config.jl")
 include("rest.jl")
+include("response.jl")
 include("api.jl")
 include("results.jl")
 

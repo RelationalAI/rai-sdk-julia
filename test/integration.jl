@@ -1,6 +1,6 @@
 using Test
 using RAI
-using RAI: transaction_id, _poll_until
+using RAI: transaction_id, _poll_with_specified_overhead
 
 import UUIDs
 
@@ -8,8 +8,7 @@ import UUIDs
 # context & setup
 
 # This will poll for a maximum of ~600 seconds in 14 steps.
-const POLLING_KWARGS =
-    (:n => 14, :first_delay => 1.0, :factor => 1.6, :throw_on_max_n => true)
+const POLLING_KWARGS = (; overhead_rate = 0.05, n = 14, throw_on_max_n = true)
 
 function test_context(profile_name = nothing)
     # If the ENV isn't configured for testing (local development), try using the local
@@ -51,7 +50,7 @@ function with_engine(f, ctx; existing_engine=nothing)
     engine_name = rnd_test_name()
     if isnothing(existing_engine)
         create_engine(ctx, engine_name)
-        _poll_until(; POLLING_KWARGS...) do
+        _poll_with_specified_overhead(; POLLING_KWARGS...) do
             get_engine(ctx, engine_name)[:state] == "PROVISIONED"
         end
     else
@@ -63,7 +62,7 @@ function with_engine(f, ctx; existing_engine=nothing)
         # Engines cannot be deleted if they are still provisioning. We have to at least wait
         # until they are ready.
         if isnothing(existing_engine)
-            _poll_until(; POLLING_KWARGS...) do
+            _poll_with_specified_overhead(; POLLING_KWARGS...) do
                 get_engine(ctx, engine_name)[:state] == "PROVISIONED"
             end
             delete_engine(ctx, engine_name)
@@ -165,9 +164,8 @@ with_engine(CTX) do engine_name
                 @test txn[:state] == "COMPLETED"
                 txn_id = transaction_id(txn)
 
-                _poll_until(; POLLING_KWARGS...) do
-                    RAI.transaction_is_done(get_transaction(CTX, txn_id))
-                end
+                # Poll until the transaction completes.
+                wait_until_done(CTX, txn_id)
 
                 # transaction
                 @test RAI.transaction_is_done(get_transaction(CTX, txn_id))
