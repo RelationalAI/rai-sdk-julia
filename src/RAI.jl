@@ -92,6 +92,7 @@ export
 include("creds.jl")
 include("config.jl")
 include("rest.jl")
+include("gen/relationalai/protocol/Protocol_PB.jl")
 include("api.jl")
 include("results.jl")
 

@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package relationalai.protocol;
+// Protocol definitions to transport metadata information.
+
+// Type definitions.
+import "schema.proto";
+
+// Describes metadata of a set of relations. 
+message MetadataInfo {
+  repeated RelationMetadata relations = 1;
+}
+
+// Describes metadata of a single relation.
+message RelationMetadata {
+  // Type signature of this relation.
+  RelationId relation_id = 1;
+
+  // Identifier for the corresponding data file.
+  string file_name = 2;
+
+  // // Cardinality.
+  // int64 cardinality = 3;
+
+  // // Physical arity matches the arity of the arrow table.
+  // int64 physical_arity = 4;
+
+  // // Logical arity matches the Rel arity, including Rel names,
+  // // i.e. constants, and value types.
+  // int64 logical_arity = 5;
+}
