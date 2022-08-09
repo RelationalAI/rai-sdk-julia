@@ -1,3 +1,5 @@
+import ProtocolBuffers
+
 # Conversion to Julia primitive types
 # ========================================================================================
 const proto_to_julia_type_map = Dict(
@@ -98,5 +100,19 @@ function show_rel_type(io::IO, rel_type::Protocol_PB.RelType{Nothing,Protocol_PB
         length(args) !== idx && print(io, ", ")
     end
     print(io, ")")
+    return nothing
+end
+
+# TODO (dba) Workaround as `RelType` has no definite size when encoding!
+# https://github.com/Drvi/ProtocolBuffers.jl/issues/13
+function ProtocolBuffers.encode(e::ProtocolBuffers.AbstractProtoEncoder, i::Int, x::Vector{Protocol_PB.RelType})
+    # This is the max size of `RelType` when either the `ConstantType` or `ValueType` are
+    # set!
+    size = 24
+    ProtocolBuffers.Codecs.maybe_ensure_room(e.io, length(x) * size)
+    for el in x
+        ProtocolBuffers.Codecs.encode_tag(e, i, ProtocolBuffers.Codecs.LENGTH_DELIMITED)
+        ProtocolBuffers.Codecs._with_size(ProtocolBuffers.encode, e.io, e, el)
+    end
     return nothing
 end

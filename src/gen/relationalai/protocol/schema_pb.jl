@@ -367,16 +367,6 @@ function PB._encoded_size(x::RelationId)
     !isempty(x.arguments) && (encoded_size += PB._encoded_size(x.arguments, 1))
     return encoded_size
 end
-# Workaround as `RelType` has no definite size when encoding!
-function PB.encode(e::PB.AbstractProtoEncoder, i::Int, x::Vector{RelType})
-    size = 24
-    PB.Codecs.maybe_ensure_room(e.io, length(x) * size)
-    for el in x
-        PB.Codecs.encode_tag(e, i, PB.Codecs.LENGTH_DELIMITED)
-        PB.Codecs._with_size(PB.encode, e.io, e, el)
-    end
-    return nothing
-end
 
 struct ValueType <: var"##AbstractValueType"
     argument_types::Vector{RelType}
