@@ -394,7 +394,7 @@ function create_database(
     overwrite = false,
     kw...
 )
-    ### Deprecation warnings: remove these parameters and warnings in a future release. ###
+    ### Deprecation support: remove these parameters and warnings in a future release. ###
     if !isempty(engine)
         @warn """DEPRECATED: Passing an `engine` is no longer required for creating a \
             database. This will be removed in a future release. Please update your call to \
@@ -405,10 +405,17 @@ function create_database(
             database. This will be removed in a future release. Please delete an existing \
             database before attempting to create it."""
         @assert engine !== "" "`overwrite` is not supported in the new engineless API."
+    end
+    if !isempty(engine) || overwrite == true
+        # If they were calling via the old API, continue to call the old method, to prevent
+        # a breaking change in the return value format.
         return _create_database_v1(ctx, database, engine; source, overwrite, kw...)
     end
-    ### End deprecation warnings ##########################################################
-    data = Dict("name" => database, "source_name" => source)
+    ### End deprecation support ##########################################################
+    data = Dict("name" => database)
+    if source !== nothing
+        data["source_name"] = source
+    end
     return _put(ctx, PATH_DATABASE; body = JSON3.write(data), kw...)
 end
 
