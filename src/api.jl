@@ -396,14 +396,14 @@ function create_database(
 )
     ### Deprecation support: remove these parameters and warnings in a future release. ###
     if !isempty(engine)
-        @warn """DEPRECATED: Passing an `engine` is no longer required for creating a \
-            database. This will be removed in a future release. Please update your call to \
-            `create_database(ctx, name)`."""
+        @warn "DEPRECATED: Passing an `engine` is no longer required for creating a" *
+            " database. This will be removed in a future release. Please update your call" *
+            " `create_database(ctx, name)`."
     end
     if overwrite == true
-        @warn """DEPRECATED: The `overwrite` option is no longer supported for creating a \
-            database. This will be removed in a future release. Please delete an existing \
-            database before attempting to create it."""
+        @warn "DEPRECATED: The `overwrite` option is no longer supported for creating a" *
+            " database. This will be removed in a future release. Please delete an" *
+            " existing database before attempting to create it."
         @assert engine !== "" "`overwrite` is not supported in the new engineless API."
     end
     if !isempty(engine) || overwrite == true
