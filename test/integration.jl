@@ -84,6 +84,9 @@ function with_database(f, ctx, engine_name; existing_database=nothing)
     end
 end
 
+# If the env vars are not properly set this will fail!
+const CTX = test_context()
+
 # -----------------------------------
 # engine
 @testset "engine" begin end
@@ -122,9 +125,6 @@ end
 
 # -----------------------------------
 # transactions
-
-# If the env vars are not properly set this will fail!
-CTX = test_context()
 
 with_engine(CTX) do engine_name
     with_database(CTX, engine_name) do database_name
