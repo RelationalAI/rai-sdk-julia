@@ -378,7 +378,51 @@ function _reltype(_::AbstractString)
     return "RAI_VariableSizeStrings.VariableSizeString"
 end
 
-function create_database(ctx::Context, database::AbstractString, engine::AbstractString; source = nothing, overwrite = false, kw...)
+"""
+    create_database(ctx, name::String[, source::String])
+
+Create a database with the specified `name`, optionally cloning from an existing `source`.
+NOTE: It is an error (`HTTPError(400)`) to create a database that already exists. To
+overwrite a database, you must first `delete_database(ctx, name)`, then create it.
+"""
+function create_database(
+    ctx::Context,
+    database::AbstractString,
+    # The `engine` argument is no longer needed. This will be removed in a future release.
+    engine::AbstractString = "";
+    source = nothing,
+    # The `overwrite` argument is no longer supported. Will be removed in a future release.
+    overwrite = false,
+    kw...
+)
+    ### Deprecation support: remove these parameters and warnings in a future release. ###
+    if !isempty(engine)
+        @warn "DEPRECATED: Passing an `engine` is no longer required for creating a" *
+            " database. This will be removed in a future release. Please update your call" *
+            " `create_database(ctx, name)`."
+    end
+    if overwrite == true
+        @warn "DEPRECATED: The `overwrite` option is no longer supported for creating a" *
+            " database. This will be removed in a future release. Please delete an" *
+            " existing database before attempting to create it."
+        @assert engine !== "" "`overwrite` is not supported in the new engineless API."
+    end
+    if !isempty(engine) || overwrite == true
+        # If they were calling via the old API, continue to call the old method, to prevent
+        # a breaking change in the return value format.
+        return _create_database_v1(ctx, database, engine; source, overwrite, kw...)
+    end
+    ### End deprecation support ##########################################################
+    data = Dict("name" => database)
+    if source !== nothing
+        data["source_name"] = source
+    end
+    return _put(ctx, PATH_DATABASE; body = JSON3.write(data), kw...)
+end
+
+# This function only exists to support the old, deprecated `overwrite=true` mode.
+# We can delete it once we remove the deprecated `overwrite` option, above.
+function _create_database_v1(ctx::Context, database::AbstractString, engine::AbstractString; source = nothing, overwrite = false, kw...)
     mode = _create_mode(source, overwrite)
     tx = Transaction(ctx.region, database, engine, mode; source = source)
     return _post(ctx, PATH_TRANSACTION; query = query(tx), body = body(tx), kw...)
