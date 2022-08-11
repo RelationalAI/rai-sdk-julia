@@ -1,3 +1,4 @@
+using Test
 using RAI
 using RAI: transaction_id, _poll_until
 
@@ -84,7 +85,46 @@ function with_database(f, ctx, engine_name; existing_database=nothing)
 end
 
 # If the env vars are not properly set this will fail!
-CTX = test_context()
+const CTX = test_context()
+
+# -----------------------------------
+# engine
+@testset "engine" begin end
+
+# -----------------------------------
+# database
+@testset "database" begin
+    dbname = rnd_test_name()
+    rsp = create_database(CTX, dbname)
+    @test rsp.database.name == dbname
+    @test rsp.database.state == "CREATED"
+
+    # TODO: https://github.com/RelationalAI/relationalai-infra/issues/2542
+    # In order to clone from a database, you currently need to "touch" it, to materialize
+    # it. Remove this once that is fixed.
+    with_engine(CTX) do engine_name
+        _ = exec(CTX, dbname, engine_name, "")
+    end
+
+    dbname_clone = "$dbname-clone"
+    rsp = create_database(CTX, dbname_clone, source=dbname)
+    @test rsp.database.name == dbname_clone
+    @test rsp.database.state == "CREATED"
+
+    # Already exists
+    @test_throws RAI.HTTPError create_database(CTX, dbname_clone)
+    @test_throws RAI.HTTPError create_database(CTX, dbname_clone, source=dbname)
+
+    rsp = delete_database(CTX, dbname)
+    @test rsp.name == dbname
+    @test delete_database(CTX, dbname_clone).name == dbname_clone
+
+    # Doesn't exists
+    @test_throws RAI.HTTPError delete_database(CTX, dbname)
+end
+
+# -----------------------------------
+# transactions
 
 with_engine(CTX) do engine_name
     with_database(CTX, engine_name) do database_name
@@ -195,14 +235,6 @@ with_engine(CTX) do engine_name
         @testset "models" begin end
     end
 end
-
-# -----------------------------------
-# engine
-@testset "engine" begin end
-
-# -----------------------------------
-# database
-@testset "database" begin end
 
 # -----------------------------------
 # client
