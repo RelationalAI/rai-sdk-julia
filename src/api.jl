@@ -353,7 +353,7 @@ end
 function _make_query_action_input(name, value)
     return Dict(
         "type" => "Relation",
-        "columns" => [[value]],
+        "columns" => [_relation_value(value)],
         "rel_key" => _make_relkey(name, _reltype(value)))
 end
 
@@ -373,8 +373,24 @@ function _make_query_source(name, model)
         "value" => model)
 end
 
-function _reltype(_::AbstractString)
+function _reltype(v::Any)
+    return _reltype(typeof(v))
+end
+function _reltype(::Type{<:AbstractString})
     return "RAI_VariableSizeStrings.VariableSizeString"
+end
+function _reltype(::AbstractVector{T}) where T
+    return _reltype(T)
+end
+function _reltype(::AbstractSet{T}) where T
+    return _reltype(T)
+end
+
+function _relation_value(v::Any)
+    return [v]
+end
+function _relation_value(v::Union{AbstractVector,AbstractSet})
+    return collect(v)
 end
 
 function create_database(ctx::Context, database::AbstractString, engine::AbstractString; source = nothing, overwrite = false, kw...)
