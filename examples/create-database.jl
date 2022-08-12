@@ -12,34 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-# Create a database, optionally overwriting an existing database.
+# Create a database, and print the response
 
-using RAI: Context, HTTPError, load_config, create_database, get_database
+using RAI: Context, HTTPError, load_config, create_database
 
 include("parseargs.jl")
 
 # Answers if the given value represents a terminal state.
 is_term_state(state) = state == "CREATED" || occursin("FAILED", state)
 
-function run(database, engine, overwrite; profile)
+function run(database; profile)
     conf = load_config(; profile = profile)
     ctx = Context(conf)
-    rsp = create_database(ctx, database, engine; overwrite = overwrite)
-    while !is_term_state(get(rsp, "state", ""))  # wait for terminal state
-        sleep(3)
-        rsp = get_database(ctx, database)
-    end
+    # NOTE: create_database is a synchronous operation, so there is no need to poll.
+    rsp = create_database(ctx, database)
     println(rsp)
 end
 
 function main()
     args = parseargs(
         "database", Dict(:help => "database name", :required => true),
-        "engine", Dict(:help => "engine name", :required => true),
-        "--overwrite", Dict(:help => "overwrite existing database", :action => "store_true"),
         "--profile", Dict(:help => "config profile (default: default)"))
     try
-        run(args.database, args.engine, args.overwrite; profile = args.profile)
+        run(args.database; profile = args.profile)
     catch e
         e isa HTTPError ? show(e) : rethrow()
     end

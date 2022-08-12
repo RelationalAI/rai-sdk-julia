@@ -22,25 +22,21 @@ include("parseargs.jl")
 # Answers if the given value represents a terminal state.
 is_term_state(state) = state == "CREATED" || occursin("FAILED", state)
 
-function run(database, engine, source; profile)
+function run(database, source; profile)
     conf = load_config(; profile = profile)
     ctx = Context(conf)
-    rsp = create_database(ctx, database, engine; source = source)
-    while !is_term_state(get(rsp, "state", ""))  # wait for terminal state
-        sleep(3)
-        rsp = get_database(ctx, database)
-    end
+    # NOTE: create_database is a synchronous operation, so there is no need to poll.
+    rsp = create_database(ctx, database; source = source)
     println(rsp)
 end
 
 function main()
     args = parseargs(
         "database", Dict(:help => "database name", :required => true),
-        "engine", Dict(:help => "engine name", :required => true),
         "source", Dict(:help => "name of database to clone", :required => true),
         "--profile", Dict(:help => "config profile (default: default)"))
     try
-        run(args.database, args.engine, args.source; profile = args.profile)
+        run(args.database, args.source; profile = args.profile)
     catch e
         e isa HTTPError ? show(e) : rethrow()
     end
