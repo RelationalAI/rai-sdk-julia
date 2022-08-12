@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-# Create a database, and print the response
+# Create a database and print the response.
 
 using RAI: Context, HTTPError, load_config, create_database
 
