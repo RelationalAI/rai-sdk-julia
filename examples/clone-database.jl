@@ -25,7 +25,6 @@ is_term_state(state) = state == "CREATED" || occursin("FAILED", state)
 function run(database, source; profile)
     conf = load_config(; profile = profile)
     ctx = Context(conf)
-    # NOTE: create_database is a synchronous operation, so there is no need to poll.
     rsp = create_database(ctx, database; source = source)
     println(rsp)
 end
