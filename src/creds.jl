@@ -21,6 +21,18 @@ struct AccessToken
     created_on::DateTime
 end
 
+function Base.show(io::IO, t::AccessToken)
+    print(
+        io,
+        "(",
+        isempty(t.token) ? "" : "$(t.token[1:3])...",
+        ", ", t.scope,
+        ", ", t.expires_in,
+        ", ", t.created_on,
+        ")"
+    )
+end
+
 function isexpired(access_token::AccessToken)::Bool
     expires_on = access_token.created_on + Second(access_token.expires_in)
     return expires_on - Second(5) < now() # anticipate token expiration by 5 seconds
@@ -35,4 +47,17 @@ mutable struct ClientCredentials <: Credentials
     access_token::Union{AccessToken,Nothing}
     ClientCredentials(client_id, client_secret, client_credentials_url = nothing) =
         new(client_id, client_secret, client_credentials_url, nothing)
+end
+
+function Base.show(io::IO, c::ClientCredentials)
+    print(
+        io,
+        "(",
+        c.client_id,
+        c.client_secret == nothing ? "" : ", $(c.client_secret[1:3])...",
+        c.access_token == nothing ? "" : ", $(c.access_token)",
+        ", ",
+        c.client_credentials_url,
+        ")"
+    )
 end
