@@ -82,7 +82,8 @@ function show_result(io::IO, rsp::TransactionResponse)
 
     for index in eachindex(rsp.metadata)
         println(io, rsp.metadata[index]["relationId"])
-        tuples = zip(rsp.results[index][2]...)
+        data = rsp.results[index][2]
+        tuples = isempty(data) ? [()] : zip(data...)
         # Reuse julia's array printing function to print this array of tuples.
         Base.print_array(io, collect(tuples))
 
