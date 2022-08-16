@@ -100,10 +100,12 @@ function wait_until_done(ctx::Context, id::AbstractString; start_time_ns = nothi
     end
 end
 
-# Polls until the execution `f()` is truthy or the maximum number of polls is
-# reached. Polling frequency is controlled to minimize overhead, by keeping the overhead
-# from sleeping within a specified overhead rate. If `throw_on_max_n` is set to true, this
-# will throw if the maximum number of iterations are reached.
+# Polls until the execution `f()` is truthy or the maximum number of polls is reached.
+# Polling frequency is computed to minimize overhead: we carefully set the sleep time
+# between polls to a fraction of the time waited so far, so that after any given sleep, we
+# cannot have missed the upstream result by more than `overhead_rate` of the _actual time_.
+# If `throw_on_max_n` is set to true, this will throw if the maximum number of iterations
+# are reached.
 function _poll_with_specified_overhead(
     f;
     overhead_rate,  # Add xx% overhead through polling.
