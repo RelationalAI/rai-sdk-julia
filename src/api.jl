@@ -82,7 +82,7 @@ function wait_until_done(ctx::Context, id::AbstractString; start_time_ns = nothi
         start_time_ns = Dates.unix2datetime(unix_ms)
     end
     try
-        _poll_with_specified_overhead(; overhead_rate = 0.01, start_time_ns) do
+        _poll_with_specified_overhead(; overhead_rate = 0.05, start_time_ns) do
             txn = get_transaction(ctx, id)
             return transaction_is_done(txn)
         end
