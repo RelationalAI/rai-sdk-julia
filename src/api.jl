@@ -18,9 +18,10 @@
 # functionality as direclty as possible, but in a way that is natural for the
 # Julia language.
 
-import JSON3
 import Arrow
 using Base.Threads: @spawn
+import Dates
+import JSON3
 
 using Mocking: Mocking, @mock  # For unit testing, by mocking API server responses
 
@@ -51,26 +52,37 @@ function Base.show(io::IO, e::HTTPError)
 end
 
 """
-    wait_until_done(ctx::Context, rsp::TransactionResponse)
-    wait_until_done(ctx::Context, transaction)
-    wait_until_done(ctx::Context, txn_id::String)
+    wait_until_done(ctx::Context, rsp::TransactionResponse) -> TransactionResponse
+    wait_until_done(ctx::Context, transaction) -> TransactionResponse
+    wait_until_done(ctx::Context, txn_id::String) -> TransactionResponse
 
-Block until the provided `transaction` has reached a terminal state.
+Block until the `transaction` has reached a terminal state, and return the response.
 
 Continuously polls get_transaction() for the transaction's state, until the transaction has
 finished. A transaction has finished once it has reached one of the terminal states:
 `COMPLETED` or `ABORTED`. The polling uses a low-overhead exponential backoff in order to
 ensure low-latency results without overloading network traffic.
 """
-function wait_until_done(ctx::Context, rsp::TransactionResponse)
-    wait_until_done(ctx, rsp.transaction)
+function wait_until_done(ctx::Context, rsp::TransactionResponse; start_time_ns = nothing)
+    wait_until_done(ctx, rsp.transaction; start_time_ns)
 end
-function wait_until_done(ctx::Context, txn::JSON3.Object)
-    wait_until_done(ctx, transaction_id(txn))
+function wait_until_done(ctx::Context, txn::JSON3.Object; start_time_ns = nothing)
+    # If the user is calling this manually, read the start time from the transaction object.
+    if start_time_ns === nothing
+        unix_ms = txn.created_on ÷ 1000
+        start_time_ns = Dates.unix2datetime(unix_ms)
+    end
+    wait_until_done(ctx, transaction_id(txn); start_time_ns)
 end
-function wait_until_done(ctx::Context, id::AbstractString)
+function wait_until_done(ctx::Context, id::AbstractString; start_time_ns = nothing)
+    # If the user is calling this manually, read the start time from the transaction object.
+    if start_time_ns === nothing
+        txn = get_transaction(ctx, id)
+        unix_ms = txn.created_on ÷ 1000
+        start_time_ns = Dates.unix2datetime(unix_ms)
+    end
     try
-        _poll_with_specified_overhead(overhead_rate = 0.01) do
+        _poll_with_specified_overhead(; overhead_rate = 0.01, start_time_ns) do
             txn = get_transaction(ctx, id)
             return transaction_is_done(txn)
         end
@@ -95,19 +107,18 @@ end
 function _poll_with_specified_overhead(
     f;
     overhead_rate,  # Add xx% overhead through polling.
+    start_time_ns = time_ns(),  # Optional start time, otherwise defaults to now()
     n = typemax(Int), # Maximum number of polls
     max_delay = 120, # 2 min
     throw_on_max_n = false,
 )
     @assert overhead_rate >= 0.0
-    delay_rate = 1.0 + overhead_rate
-    start_time = time_ns()
     for _ in 1:n
         if f()
             return nothing
         end
-        current_delay = time_ns() - start_time
-        duration = (current_delay * delay_rate) / 1e9
+        current_delay = time_ns() - start_time_ns
+        duration = (current_delay * overhead_rate) / 1e9
         duration = min(duration, max_delay)  # clamp the duration as specified.
         sleep(duration)
     end
@@ -512,11 +523,16 @@ Dict{String, Any} with 4 entries:
 ```
 """
 function exec(ctx::Context, database::AbstractString, engine::AbstractString, source; inputs = nothing, readonly = false, kw...)
+    # Record the initial start time so that we include the time to create the transaction
+    # in our exponential backoff in `wait_until_done()`.
+    start_time_ns = time_ns()
+    # Create an Async transaction:
     transactionResponse = exec_async(ctx, database, engine, source; inputs=inputs, readonly=readonly, kw...)
     if transactionResponse.results !== nothing
         return transactionResponse
     end
-    wait_until_done(ctx, transactionResponse)
+    # Poll until the transaction is done, and return the results.
+    return wait_until_done(ctx, transactionResponse; start_time_ns = start_time_ns)
 end
 
 function exec_async(ctx::Context, database::AbstractString, engine::AbstractString, source; inputs = nothing, readonly = false, kw...)
