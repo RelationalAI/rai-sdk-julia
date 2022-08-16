@@ -108,7 +108,7 @@ end
 # Polling frequency is computed to minimize overhead: we carefully set the sleep time
 # between polls to a fraction of the time waited so far, so that after any given sleep, we
 # cannot have missed the upstream result by more than `overhead_rate` of the _actual time_.
-# If `throw_on_max_n` is set to true, this will throw if the maximum number of iterations
+# If `throw_on_timeout` is set to true, this will throw if the maximum number of iterations
 # are reached.
 function _poll_with_specified_overhead(
     f;
@@ -116,21 +116,29 @@ function _poll_with_specified_overhead(
     start_time_ns = time_ns(),  # Optional start time, otherwise defaults to now()
     n = typemax(Int), # Maximum number of polls
     max_delay = 120, # 2 min
-    throw_on_max_n = false,
+    timeout_secs = Inf,  # no timeout by default
+    throw_on_timeout = false,
 )
     @assert overhead_rate >= 0.0
-    for _ in 1:n
+    timeout_ns = timeout_secs * 1e9
+    local iter
+    for i in 1:n
+        iter = i
         if f()
             return nothing
         end
         current_delay = time_ns() - start_time_ns
+        if current_delay > timeout_ns
+            break
+        end
         duration = (current_delay * overhead_rate) / 1e9
         duration = min(duration, max_delay)  # clamp the duration as specified.
         sleep(duration)
     end
 
     # We have exhausted the iterator.
-    throw_on_max_n && error("Max iteration $n reached in `_poll_with_specified_overhead`.")
+    current_delay_secs = (time_ns() - start_time_ns) * 1e9
+    throw_on_timeout && error("Timed out after $iter iterations, $current_delay_secs seconds in `_poll_with_specified_overhead`.")
 
     return nothing
 end

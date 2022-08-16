@@ -8,8 +8,8 @@ import UUIDs
 # context & setup
 
 # These are fairly unaggressive testing parameters, to try to not be too expensive on the
-# cloud. This should timeout after around 5 minutes of silence.
-const POLLING_KWARGS = (; overhead_rate = 0.20, n = 25, throw_on_max_n = true)
+# cloud. Time out after ten minutes of silence.
+const POLLING_KWARGS = (; overhead_rate = 0.20, timeout_secs = 10*60, throw_on_timeout = true)
 
 function test_context(profile_name = nothing)
     # If the ENV isn't configured for testing (local development), try using the local

@@ -84,8 +84,8 @@ end
     @test isnothing(_poll_with_specified_overhead(() -> true; overhead_rate = 0.01))
     @test isnothing(_poll_with_specified_overhead(() -> false; overhead_rate = 0.01, n=0))
     @test isnothing(_poll_with_specified_overhead(() -> false; overhead_rate = 0.01, n=1))
-    @test isnothing(_poll_with_specified_overhead(() -> true; overhead_rate = 0.01, n=1, throw_on_max_n=true))
-    @test_throws ErrorException _poll_with_specified_overhead(() -> false; overhead_rate = 0.01, n=1, throw_on_max_n=true)
+    @test isnothing(_poll_with_specified_overhead(() -> true; overhead_rate = 0.01, n=1, throw_on_timeout=true))
+    @test_throws ErrorException _poll_with_specified_overhead(() -> false; overhead_rate = 0.01, n=1, throw_on_timeout=true)
 end
 
 @testset "exec_async" begin
