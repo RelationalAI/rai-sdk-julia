@@ -68,18 +68,22 @@ function wait_until_done(ctx::Context, rsp::TransactionResponse; start_time_ns =
 end
 function wait_until_done(ctx::Context, txn::JSON3.Object; start_time_ns = nothing)
     # If the user is calling this manually, read the start time from the transaction object.
-    if start_time_ns === nothing
-        unix_ms = txn.created_on ÷ 1000
-        start_time_ns = Dates.unix2datetime(unix_ms)
+    if start_time_ns === nothing &&
+            # NOTE: the fast-path txn may not include the created_on key.
+            haskey(txn, :created_on)
+        start_time_ns = _transaction_start_time_ns(txn)
     end
     wait_until_done(ctx, transaction_id(txn); start_time_ns)
+end
+function _transaction_start_time_ns(txn::JSON3.Object)
+    unix_ms = txn[:created_on] ÷ 1000
+    Dates.unix2datetime(unix_ms)
 end
 function wait_until_done(ctx::Context, id::AbstractString; start_time_ns = nothing)
     # If the user is calling this manually, read the start time from the transaction object.
     if start_time_ns === nothing
         txn = get_transaction(ctx, id)
-        unix_ms = txn.created_on ÷ 1000
-        start_time_ns = Dates.unix2datetime(unix_ms)
+        start_time_ns = _transaction_start_time_ns(txn)
     end
     try
         _poll_with_specified_overhead(; overhead_rate = 0.05, start_time_ns) do

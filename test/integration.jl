@@ -173,6 +173,14 @@ with_engine(CTX) do engine_name
                 # transaction
                 @test RAI.transaction_is_done(get_transaction(CTX, txn_id))
 
+                # Test calling this after the transaction already _is_ done:
+                wait_until_done(CTX, txn_id)
+                # Test all the API variants:
+                wait_until_done(CTX, txn_id)
+                wait_until_done(CTX, txn)
+                wait_until_done(CTX, resp)
+                wait_until_done(CTX, get_transaction(CTX, txn_id))
+
                 # metadata
                 # TODO (dba): Test new ProtoBuf metadata.
 
