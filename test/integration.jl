@@ -7,8 +7,9 @@ import UUIDs
 # -----------------------------------
 # context & setup
 
-# This will poll for a maximum of ~600 seconds in 14 steps.
-const POLLING_KWARGS = (; overhead_rate = 0.05, n = 14, throw_on_max_n = true)
+# These are fairly unaggressive testing parameters, to try to not be too expensive on the
+# cloud. This should timeout after around 5 minutes of silence.
+const POLLING_KWARGS = (; overhead_rate = 0.20, n = 25, throw_on_max_n = true)
 
 function test_context(profile_name = nothing)
     # If the ENV isn't configured for testing (local development), try using the local
@@ -49,8 +50,9 @@ rnd_test_name() = "julia-sdk-" * string(UUIDs.uuid4())
 function with_engine(f, ctx; existing_engine=nothing)
     engine_name = rnd_test_name()
     if isnothing(existing_engine)
+        start_time_ns = time_ns()
         create_engine(ctx, engine_name)
-        _poll_with_specified_overhead(; POLLING_KWARGS...) do
+        _poll_with_specified_overhead(; POLLING_KWARGS..., start_time_ns) do
             get_engine(ctx, engine_name)[:state] == "PROVISIONED"
         end
     else
@@ -62,7 +64,8 @@ function with_engine(f, ctx; existing_engine=nothing)
         # Engines cannot be deleted if they are still provisioning. We have to at least wait
         # until they are ready.
         if isnothing(existing_engine)
-            _poll_with_specified_overhead(; POLLING_KWARGS...) do
+            start_time_ns = time_ns() - 2e9  # assume we started 2 seconds ago
+            _poll_with_specified_overhead(; POLLING_KWARGS..., start_time_ns) do
                 get_engine(ctx, engine_name)[:state] == "PROVISIONED"
             end
             delete_engine(ctx, engine_name)
