@@ -14,6 +14,18 @@
 
 using Dates: DateTime, Second
 
+"""
+    AccessToken
+
+Represents the oauth access token.
+Please not that token is hidden by default when displaying AccessToken
+but we can still print the secret if needed:
+
+Example:
+```
+access_token.token
+````
+"""
 struct AccessToken
     token::String
     scope::String
@@ -40,6 +52,18 @@ end
 
 abstract type Credentials end
 
+"""
+    ClientCredentials
+
+Represents the client credentials object.
+Please not that client_secret is hidden by default when displaying ClientCredentials
+but we can still print the secret if needed:
+
+Example:
+```
+credentials.client_secret
+````
+"""
 mutable struct ClientCredentials <: Credentials
     client_id::String
     client_secret::String
