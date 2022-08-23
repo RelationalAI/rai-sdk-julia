@@ -1,38 +1,38 @@
-import ProtocolBuffers
+import ProtoBuf
 
 # Conversion to Julia primitive types
 # ========================================================================================
 const proto_to_julia_type_map = Dict(
-    Protocol_PB.PrimitiveType.INT_128 => Int128,
-    Protocol_PB.PrimitiveType.INT_64 => Int64,
-    Protocol_PB.PrimitiveType.INT_32 => Int32,
-    Protocol_PB.PrimitiveType.INT_16 => Int16,
-    Protocol_PB.PrimitiveType.INT_8 => Int8,
-    Protocol_PB.PrimitiveType.UINT_128 => UInt128,
-    Protocol_PB.PrimitiveType.UINT_64 => UInt64,
-    Protocol_PB.PrimitiveType.UINT_32 => UInt32,
-    Protocol_PB.PrimitiveType.UINT_16 => UInt16,
-    Protocol_PB.PrimitiveType.UINT_8 => UInt8,
-    Protocol_PB.PrimitiveType.FLOAT_64 => Float64,
-    Protocol_PB.PrimitiveType.FLOAT_32 => Float32,
-    Protocol_PB.PrimitiveType.FLOAT_16 => Float16,
-    Protocol_PB.PrimitiveType.STRING => String,
-    Protocol_PB.PrimitiveType.SYMBOL => Symbol,
-    Protocol_PB.PrimitiveType.CHAR => Char,
-    Protocol_PB.PrimitiveType.BOOL => Bool,
+    protocol.PrimitiveType.INT_128 => Int128,
+    protocol.PrimitiveType.INT_64 => Int64,
+    protocol.PrimitiveType.INT_32 => Int32,
+    protocol.PrimitiveType.INT_16 => Int16,
+    protocol.PrimitiveType.INT_8 => Int8,
+    protocol.PrimitiveType.UINT_128 => UInt128,
+    protocol.PrimitiveType.UINT_64 => UInt64,
+    protocol.PrimitiveType.UINT_32 => UInt32,
+    protocol.PrimitiveType.UINT_16 => UInt16,
+    protocol.PrimitiveType.UINT_8 => UInt8,
+    protocol.PrimitiveType.FLOAT_64 => Float64,
+    protocol.PrimitiveType.FLOAT_32 => Float32,
+    protocol.PrimitiveType.FLOAT_16 => Float16,
+    protocol.PrimitiveType.STRING => String,
+    protocol.PrimitiveType.SYMBOL => Symbol,
+    protocol.PrimitiveType.CHAR => Char,
+    protocol.PrimitiveType.BOOL => Bool,
 )
 
-function primitive_type_from_proto(primitive_type::Protocol_PB.PrimitiveType.T)
+function primitive_type_from_proto(primitive_type::protocol.PrimitiveType.T)
     # Each of these maps to a single Julia type.
     proto_to_julia_type_map[primitive_type]
 end
 
-function extract_values_from_proto(rel_tuple::Protocol_PB.RelTuple)
+function extract_values_from_proto(rel_tuple::protocol.RelTuple)
     return [value_from_proto(val) for val in rel_tuple.arguments]
 end
 
 # Julia values from protos.
-function value_from_proto(v::Protocol_PB.PrimitiveValue)
+function value_from_proto(v::protocol.PrimitiveValue)
     # Use the `tag` to infer the Julia type.
     T = primitive_type_from_proto(v.tag)
 
@@ -52,17 +52,17 @@ _from_proto(::Type{UInt8}, v) = v % Int8
 _from_proto(T::Type{UInt128}, v) = _from_uint128_proto(v)
 _from_proto(T::Type{Int128}, v) = _from_int128_proto(v)
 
-function _from_uint128_proto(i::Protocol_PB.RelUInt128)
+function _from_uint128_proto(i::protocol.RelUInt128)
     return (UInt128(i.highbits) << 64) | i.lowbits
 end
 
-function _from_int128_proto(i::Protocol_PB.RelInt128)
+function _from_int128_proto(i::protocol.RelInt128)
     return (Int128(i.highbits) << 64) | i.lowbits
 end
 
 # Display
 # ========================================================================================
-function show_relation_id(io::IO, rel_id::Protocol_PB.RelationId)
+function show_relation_id(io::IO, rel_id::protocol.RelationId)
     for rel_type in rel_id.arguments
         print(io, "/")
         show_rel_type(io, rel_type)
@@ -72,13 +72,13 @@ function show_relation_id(io::IO, rel_id::Protocol_PB.RelationId)
 end
 
 # PrimitiveType
-function show_rel_type(io::IO, rel_type::Protocol_PB.RelType{Nothing,Nothing})
+function show_rel_type(io::IO, rel_type::protocol.RelType{Nothing,Nothing})
     return show(io, primitive_type_from_proto(rel_type.primitive_type))
 end
 # ConstantType
 function show_rel_type(
     io::IO,
-    rel_type::Protocol_PB.RelType{Protocol_PB.ConstantType,Nothing},
+    rel_type::protocol.RelType{protocol.ConstantType,Nothing},
 )
     constant_type = rel_type.constant_type
     print(io, "ConstantType(")
@@ -94,7 +94,7 @@ function show_rel_type(
     return nothing
 end
 # ValueType
-function show_rel_type(io::IO, rel_type::Protocol_PB.RelType{Nothing,Protocol_PB.ValueType})
+function show_rel_type(io::IO, rel_type::protocol.RelType{Nothing,protocol.ValueType})
     print(io, "ValueType(")
     args = rel_type.value_type.argument_types
     for (idx, type) in enumerate(args)
@@ -105,20 +105,3 @@ function show_rel_type(io::IO, rel_type::Protocol_PB.RelType{Nothing,Protocol_PB
     return nothing
 end
 
-# TODO (dba) Workaround as `RelType` has no definite size when encoding!
-# https://github.com/Drvi/ProtocolBuffers.jl/issues/13
-function ProtocolBuffers.encode(
-    e::ProtocolBuffers.AbstractProtoEncoder,
-    i::Int,
-    x::Vector{Protocol_PB.RelType},
-)
-    # This is the max size of `RelType` when either the `ConstantType` or `ValueType` are
-    # set!
-    size = 24
-    ProtocolBuffers.Codecs.maybe_ensure_room(e.io, length(x) * size)
-    for el in x
-        ProtocolBuffers.Codecs.encode_tag(e, i, ProtocolBuffers.Codecs.LENGTH_DELIMITED)
-        ProtocolBuffers.Codecs._with_size(ProtocolBuffers.encode, e.io, e, el)
-    end
-    return nothing
-end

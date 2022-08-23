@@ -20,7 +20,7 @@
 
 import JSON3
 import Arrow
-import ProtocolBuffers
+import ProtoBuf
 using Base.Threads: @spawn
 
 using Mocking: Mocking, @mock  # For unit testing, by mocking API server responses
@@ -566,8 +566,8 @@ function get_transaction_metadata(ctx::Context, id::AbstractString; kw...)
     path = _mkurl(ctx, path)
     headers = _ensure_proto_accept_header(get(kw, :headers, []))
     rsp = request(ctx, "GET", path; kw..., headers)
-    d = ProtocolBuffers.ProtoDecoder(IOBuffer(rsp.body));
-    metadata = ProtocolBuffers.decode(d, Protocol_PB.MetadataInfo)
+    d = ProtoBuf.ProtoDecoder(IOBuffer(rsp.body));
+    metadata = ProtoBuf.decode(d, protocol.MetadataInfo)
     return metadata
 end
 
@@ -597,8 +597,8 @@ function _parse_multipart_fastpath_sync_response(msg)
     transaction = JSON3.read(parts[1])
 
     metadata_idx = findfirst(p->p.name == "metadata.proto", parts)
-    d = ProtocolBuffers.ProtoDecoder(parts[metadata_idx].data);
-    metadata = ProtocolBuffers.decode(d, Protocol_PB.MetadataInfo)
+    d = ProtoBuf.ProtoDecoder(parts[metadata_idx].data);
+    metadata = ProtoBuf.decode(d, protocol.MetadataInfo)
 
     problems_idx = findfirst(p->p.name == "problems", parts)
     problems = JSON3.read(parts[problems_idx])

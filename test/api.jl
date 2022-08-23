@@ -4,11 +4,11 @@ import HTTP, Arrow
 using JSON3
 using Mocking
 using RAI: _poll_until
-using RAI.Protocol_PB
+using RAI.protocol
 
 using RAI: TransactionResponse
 
-import ProtocolBuffers
+import ProtoBuf
 
 Mocking.activate()
 
@@ -22,7 +22,7 @@ function make_proto_metadata()
     # [{"relationId":"/:output/Int64","types":[":output","Int64"]}]
     return MetadataInfo(
         RelationMetadata[RelationMetadata(
-            RelationId([
+            RelationId(RelType[
                 RelType{ConstantType,Nothing}(
                     Kind.CONSTANT_TYPE,
                     PrimitiveType.UNSPECIFIED_TYPE,
@@ -37,7 +37,7 @@ function make_proto_metadata()
                         RelTuple(
                             PrimitiveValue[PrimitiveValue(
                                 PrimitiveType.SYMBOL,
-                                ProtocolBuffers.OneOf{Vector{UInt8}}(
+                                ProtoBuf.OneOf{Vector{UInt8}}(
                                     :string_val,
                                     UInt8[0x6f, 0x75, 0x74, 0x70, 0x75, 0x74], # output
                                 ),
@@ -55,13 +55,12 @@ function make_proto_metadata()
             "0.arrow",
         )],
     )
-
 end
 function make_proto_metadata_string()
     metadata = make_proto_metadata()
     io = IOBuffer()
-    e = ProtocolBuffers.ProtoEncoder(io)
-    ProtocolBuffers.encode(e, metadata)
+    e = ProtoBuf.ProtoEncoder(io)
+    ProtoBuf.encode(e, metadata)
     return String(take!(io))
 end
 

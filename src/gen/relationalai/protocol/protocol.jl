@@ -1,6 +1,6 @@
-module Protocol_PB
+module protocol
 
 include("schema_pb.jl")
 include("message_pb.jl")
 
-end # module Protocol_PB
+end # module protocol

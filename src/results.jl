@@ -24,13 +24,13 @@ end
 
 struct TransactionResponse
     transaction::JSON3.Object
-    metadata::Union{Protocol_PB.MetadataInfo,Nothing}
+    metadata::Union{protocol.MetadataInfo,Nothing}
     problems::Union{JSON3.Array,Nothing}
     results::Union{Vector{Pair{String, Arrow.Table}},Nothing}
 
     TransactionResponse(
         transaction::JSON3.Object,
-        metadata::Union{Protocol_PB.MetadataInfo,Nothing},
+        metadata::Union{protocol.MetadataInfo,Nothing},
         problems::Union{JSON3.Array,Nothing},
         results::Union{Vector{Pair{String, Arrow.Table}},Nothing}
     ) = new(transaction, metadata, problems, results)

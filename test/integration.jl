@@ -146,9 +146,9 @@ with_engine(CTX) do engine_name
                 # /ConstantType(Symbol, :output)/Int64/Int64/Int64/Int64
                 @test length(resp.metadata.relations[1].relation_id.arguments) == 5
                 for rel_type in resp.metadata.relations[1].relation_id.arguments[2:end]
-                    @test rel_type == RAI.Protocol_PB.RelType(
-                        RAI.Protocol_PB.Kind.PRIMITIVE_TYPE,
-                        RAI.Protocol_PB.PrimitiveType.INT_64,
+                    @test rel_type == RAI.protocol.RelType(
+                        RAI.protocol.Kind.PRIMITIVE_TYPE,
+                        RAI.protocol.PrimitiveType.INT_64,
                         nothing,
                         nothing,
                     )
