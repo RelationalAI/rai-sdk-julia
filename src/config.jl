@@ -35,7 +35,7 @@ end
 _get_value(d::Dict, k::String) = first(get(d, k, (nothing,)))
 
 function load_config(; fname = nothing, profile = nothing)::Config
-    isnothing(fname) && (fname = "~/.rai/config")
+    isnothing(fname) && (fname = joinpath(homedir(), ".rai", "config"))
     isnothing(profile) && (profile = "default")
     stanza = _load_stanza(fname, profile)
     region = _get_value(stanza, "region")

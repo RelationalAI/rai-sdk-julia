@@ -18,6 +18,10 @@ import Tables
 using RAI
 using Test
 
+@testset "config.jl" begin
+    include("config.jl")
+end
+
 @testset "rest.jl" begin
     include("rest.jl")
 end

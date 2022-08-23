@@ -14,11 +14,35 @@
 
 using Dates: DateTime, Second
 
+"""
+    AccessToken
+
+Represents the oauth access token.
+Please not that token is hidden by default when displaying AccessToken
+but we can still print the secret if needed:
+
+Example:
+```
+access_token.token
+````
+"""
 struct AccessToken
     token::String
     scope::String
     expires_in::Int  # seconds
     created_on::DateTime
+end
+
+function Base.show(io::IO, t::AccessToken)
+    print(
+        io,
+        "(",
+        isempty(t.token) ? "" : "$(t.token[1:3])...",
+        ", ", t.scope,
+        ", ", t.expires_in,
+        ", ", t.created_on,
+        ")"
+    )
 end
 
 function isexpired(access_token::AccessToken)::Bool
@@ -28,6 +52,18 @@ end
 
 abstract type Credentials end
 
+"""
+    ClientCredentials
+
+Represents the client credentials object.
+Please not that client_secret is hidden by default when displaying ClientCredentials
+but we can still print the secret if needed:
+
+Example:
+```
+credentials.client_secret
+````
+"""
 mutable struct ClientCredentials <: Credentials
     client_id::String
     client_secret::String
@@ -35,4 +71,17 @@ mutable struct ClientCredentials <: Credentials
     access_token::Union{AccessToken,Nothing}
     ClientCredentials(client_id, client_secret, client_credentials_url = nothing) =
         new(client_id, client_secret, client_credentials_url, nothing)
+end
+
+function Base.show(io::IO, c::ClientCredentials)
+    print(
+        io,
+        "(",
+        c.client_id,
+        c.client_secret == nothing ? "" : ", $(c.client_secret[1:3])...",
+        c.access_token == nothing ? "" : ", $(c.access_token)",
+        ", ",
+        c.client_credentials_url,
+        ")"
+    )
 end
