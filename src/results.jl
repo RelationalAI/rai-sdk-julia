@@ -82,7 +82,8 @@ function show_result(io::IO, rsp::TransactionResponse)
 
     for (idx, relation_metadata) in enumerate(rsp.metadata.relations)
         show_relation_id(io, relation_metadata.relation_id)
-        tuples = zip(rsp.results[idx][2]...)
+        data = rsp.results[idx][2]
+        tuples = isempty(data) ? [()] : zip(data...)
         # Reuse julia's array printing function to print this array of tuples.
         Base.print_array(io, collect(tuples))
 
