@@ -3,6 +3,7 @@ using Test
 import HTTP, Arrow
 using JSON3
 using Mocking
+using Dates
 using RAI: _poll_with_specified_overhead
 
 using RAI: TransactionResponse
@@ -201,4 +202,14 @@ end
     apply(only_1_request_patch) do
         @test RAI.exec(ctx, "engine", "db", "2+2") isa RAI.TransactionResponse
     end
+end
+
+@testset "hide client secrets in repl" begin
+    access_token = AccessToken("abc_token", "run:transaction", 3600, DateTime("2022-08-12T17:49:51.365"))
+    creds = ClientCredentials("client_id", "xyz_client_secret", "https://login.relationalai.com/oauth/token")
+    creds.access_token = access_token
+
+    io = IOBuffer()
+    show(io, creds)
+    @test String(take!(io)) === "(client_id, xyz..., (abc..., run:transaction, 3600, 2022-08-12T17:49:51.365), https://login.relationalai.com/oauth/token)"
 end
