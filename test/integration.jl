@@ -1,15 +1,15 @@
 using Test
 using RAI
-using RAI: transaction_id, _poll_until
+using RAI: transaction_id, _poll_with_specified_overhead
 
 import UUIDs
 
 # -----------------------------------
 # context & setup
 
-# This will poll for a maximum of ~600 seconds in 14 steps.
-const POLLING_KWARGS =
-    (:n => 14, :first_delay => 1.0, :factor => 1.6, :throw_on_max_n => true)
+# These are fairly unaggressive testing parameters, to try to not be too expensive on the
+# cloud. Time out after ten minutes of silence.
+const POLLING_KWARGS = (; overhead_rate = 0.20, timeout_secs = 10*60, throw_on_timeout = true)
 
 function test_context(profile_name = nothing)
     # If the ENV isn't configured for testing (local development), try using the local
@@ -50,8 +50,9 @@ rnd_test_name() = "julia-sdk-" * string(UUIDs.uuid4())
 function with_engine(f, ctx; existing_engine=nothing)
     engine_name = rnd_test_name()
     if isnothing(existing_engine)
+        start_time_ns = time_ns()
         create_engine(ctx, engine_name)
-        _poll_until(; POLLING_KWARGS...) do
+        _poll_with_specified_overhead(; POLLING_KWARGS..., start_time_ns) do
             get_engine(ctx, engine_name)[:state] == "PROVISIONED"
         end
     else
@@ -63,7 +64,8 @@ function with_engine(f, ctx; existing_engine=nothing)
         # Engines cannot be deleted if they are still provisioning. We have to at least wait
         # until they are ready.
         if isnothing(existing_engine)
-            _poll_until(; POLLING_KWARGS...) do
+            start_time_ns = time_ns() - 2e9  # assume we started 2 seconds ago
+            _poll_with_specified_overhead(; POLLING_KWARGS..., start_time_ns) do
                 get_engine(ctx, engine_name)[:state] == "PROVISIONED"
             end
             delete_engine(ctx, engine_name)
@@ -165,12 +167,19 @@ with_engine(CTX) do engine_name
                 @test txn[:state] == "COMPLETED"
                 txn_id = transaction_id(txn)
 
-                _poll_until(; POLLING_KWARGS...) do
-                    RAI.transaction_is_done(get_transaction(CTX, txn_id))
-                end
+                # Poll until the transaction completes.
+                wait_until_done(CTX, txn_id)
 
                 # transaction
                 @test RAI.transaction_is_done(get_transaction(CTX, txn_id))
+
+                # Test calling this after the transaction already _is_ done:
+                wait_until_done(CTX, txn_id)
+                # Test all the API variants:
+                wait_until_done(CTX, txn_id)
+                wait_until_done(CTX, txn)
+                wait_until_done(CTX, resp)
+                wait_until_done(CTX, get_transaction(CTX, txn_id))
 
                 # metadata
                 # TODO (dba): Test new ProtoBuf metadata.

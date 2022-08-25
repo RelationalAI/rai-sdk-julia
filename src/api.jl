@@ -18,9 +18,10 @@
 # functionality as direclty as possible, but in a way that is natural for the
 # Julia language.
 
-import JSON3
 import Arrow
 using Base.Threads: @spawn
+import Dates
+import JSON3
 
 using Mocking: Mocking, @mock  # For unit testing, by mocking API server responses
 
@@ -50,33 +51,94 @@ function Base.show(io::IO, e::HTTPError)
     end
 end
 
-# Polls until the execution `f()` is truthy or the maximum number of polls is
-# reached. Polling frequency is controlled by an `ExponentialBackOff`. If `throw_on_max_n`
-# is set to true, this will throw if the maximum number of iterations are reached.
-function _poll_until(
-    f;
-    n=typemax(Int), # Maximum number of polls
-    first_delay=0.5,
-    factor=1.1,
-    max_delay=120, # 2 min
-    throw_on_max_n=false,
-)
-    backoff = Base.ExponentialBackOff(
-        n=n,
-        first_delay=first_delay,
-        factor=factor,
-        max_delay=max_delay,
-    )
+"""
+    wait_until_done(ctx::Context, rsp::TransactionResponse) -> TransactionResponse
+    wait_until_done(ctx::Context, transaction) -> TransactionResponse
+    wait_until_done(ctx::Context, txn_id::String) -> TransactionResponse
 
-    for duration in backoff
+Block until the `transaction` has reached a terminal state, and return the response.
+
+Continuously polls get_transaction() for the transaction's state, until the transaction has
+finished. A transaction has finished once it has reached one of the terminal states:
+`COMPLETED` or `ABORTED`. The polling uses a low-overhead exponential backoff in order to
+ensure low-latency results without overloading network traffic.
+"""
+function wait_until_done(ctx::Context, rsp::TransactionResponse; start_time_ns = nothing)
+    wait_until_done(ctx, rsp.transaction; start_time_ns)
+end
+function wait_until_done(ctx::Context, txn::JSON3.Object; start_time_ns = nothing)
+    # If the user is calling this manually, read the start time from the transaction object.
+    if start_time_ns === nothing &&
+            # NOTE: the fast-path txn may not include the created_on key.
+            haskey(txn, :created_on)
+        start_time_ns = _transaction_start_time_ns(txn)
+    end
+    wait_until_done(ctx, transaction_id(txn); start_time_ns)
+end
+function _transaction_start_time_ns(txn::JSON3.Object)
+    unix_ms = txn[:created_on] ÷ 1000
+    Dates.unix2datetime(unix_ms)
+end
+function wait_until_done(ctx::Context, id::AbstractString; start_time_ns = nothing)
+    # If the user is calling this manually, read the start time from the transaction object.
+    if start_time_ns === nothing
+        txn = get_transaction(ctx, id)
+        start_time_ns = _transaction_start_time_ns(txn)
+    end
+    try
+        _poll_with_specified_overhead(; overhead_rate = 0.10, start_time_ns) do
+            txn = get_transaction(ctx, id)
+            return transaction_is_done(txn)
+        end
+        t = @spawn get_transaction(ctx, id)
+        m = @spawn get_transaction_metadata(ctx, id)
+        p = @spawn get_transaction_problems(ctx, id)
+        r = @spawn get_transaction_results(ctx, id)
+
+        return TransactionResponse(fetch(t), fetch(m), fetch(p), fetch(r))
+    catch
+        # Always print out the transaction id so that users can still get the txn ID even
+        # if there's an error during polling (such as an InterruptException).
+        @error "Client-side error while executing transaction." transaction_id=id
+        rethrow()
+    end
+end
+
+# Polls until the execution `f()` is truthy or the maximum number of polls is reached.
+# Polling frequency is computed to minimize overhead: we carefully set the sleep time
+# between polls to a fraction of the time waited so far, so that after any given sleep, we
+# cannot have missed the upstream result by more than `overhead_rate` of the _actual time_.
+# If `throw_on_timeout` is set to true, this will throw if the maximum number of iterations
+# are reached.
+function _poll_with_specified_overhead(
+    f;
+    overhead_rate,  # Add xx% overhead through polling.
+    start_time_ns = time_ns(),  # Optional start time, otherwise defaults to now()
+    n = typemax(Int), # Maximum number of polls
+    max_delay = 120, # 2 min
+    timeout_secs = Inf,  # no timeout by default
+    throw_on_timeout = false,
+)
+    @assert overhead_rate >= 0.0
+    timeout_ns = timeout_secs * 1e9
+    local iter
+    for i in 1:n
+        iter = i
         if f()
             return nothing
         end
+        current_delay = time_ns() - start_time_ns
+        if current_delay > timeout_ns
+            break
+        end
+        duration = (current_delay * overhead_rate) / 1e9
+        duration = min(duration, max_delay)  # clamp the duration as specified.
         sleep(duration)
     end
 
     # We have exhausted the iterator.
-    throw_on_max_n && throw("Max iteration $n reached in `_poll_until`.")
+    current_delay_secs = (time_ns() - start_time_ns) * 1e9
+    throw_on_timeout && error("Timed out after $iter iterations, $current_delay_secs seconds in `_poll_with_specified_overhead`.")
 
     return nothing
 end
@@ -475,30 +537,16 @@ Dict{String, Any} with 4 entries:
 ```
 """
 function exec(ctx::Context, database::AbstractString, engine::AbstractString, source; inputs = nothing, readonly = false, kw...)
+    # Record the initial start time so that we include the time to create the transaction
+    # in our exponential backoff in `wait_until_done()`.
+    start_time_ns = time_ns()
+    # Create an Async transaction:
     transactionResponse = exec_async(ctx, database, engine, source; inputs=inputs, readonly=readonly, kw...)
     if transactionResponse.results !== nothing
         return transactionResponse
     end
-    txn = transactionResponse.transaction
-    try
-        _poll_until() do
-            txn = get_transaction(ctx, transaction_id(txn))
-            transaction_is_done(txn)
-        end
-        id = transaction_id(txn)
-        t = @spawn get_transaction(ctx, id)
-        m = @spawn get_transaction_metadata(ctx, id)
-        p = @spawn get_transaction_problems(ctx, id)
-        r = @spawn get_transaction_results(ctx, id)
-
-        return TransactionResponse(fetch(t), fetch(m), fetch(p), fetch(r))
-    catch
-        @error "Client-side error while executing transaction:" transaction=txn
-        # Always print out the transaction id so that users can still get the txn ID even
-        # if there's an error during polling (such as an InterruptException).
-        #@info """Exception while polling for transaction:\n"id": $(repr(transaction_id(txn)))"""
-        rethrow()
-    end
+    # Poll until the transaction is done, and return the results.
+    return wait_until_done(ctx, transactionResponse; start_time_ns = start_time_ns)
 end
 
 function exec_async(ctx::Context, database::AbstractString, engine::AbstractString, source; inputs = nothing, readonly = false, kw...)
