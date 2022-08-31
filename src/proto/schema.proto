@@ -56,6 +56,9 @@ message PrimitiveValue {
 enum PrimitiveType {
     // next available: 19
 
+    // We removed `SYMBOL` as a `PrimitiveType`
+    reserved 17;
+
     // https://developers.google.com/protocol-buffers/docs/style#enums
     UNSPECIFIED_TYPE = 0;
 
@@ -74,10 +77,7 @@ enum PrimitiveType {
     FLOAT_16 = 13; // Not present in protobuf
     CHAR = 14;
     BOOL = 15;
-
-    // these share the string_val field
     STRING = 16;   // In protobuf this is really bytes.
-    SYMBOL = 17;   // In protobuf this is really bytes.
 
     // VariableSizeStrings are not supported as PrimitiveValues, though the type can
     // show up in (internal) type signatures.
