@@ -74,7 +74,7 @@ function show_result(io::IO, rsp::TransactionResponse)
         Base.print_array(io, collect(tuples))
 
         # Print trailing newline
-        if idx !== length(rsp.metadata.relations)
+        if idx !== lastindex(rsp.metadata.relations)
             println(io, "\n")
         else
             println(io, "")

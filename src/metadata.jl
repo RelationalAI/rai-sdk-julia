@@ -62,10 +62,12 @@ end
 # Display
 # ========================================================================================
 function show_relation_id(io::IO, rel_id::protocol.RelationId)
-    for rel_type in rel_id.arguments
-        print(io, "/")
+    print(io, "[")
+    for (idx, rel_type) in enumerate(rel_id.arguments)
         show_rel_type(io, rel_type)
+        idx !== lastindex(rel_id.arguments) && print(io, ", ")
     end
+    print(io, "]")
     print(io, "\n")
     return nothing
 end
@@ -75,21 +77,24 @@ function show_rel_type(io::IO, rel_type::protocol.RelType{Nothing,Nothing})
     return show(io, primitive_type_from_proto(rel_type.primitive_type))
 end
 # ConstantType
-function show_rel_type(
-    io::IO,
-    rel_type::protocol.RelType{protocol.ConstantType,Nothing},
-)
+function show_rel_type(io::IO, rel_type::protocol.RelType{protocol.ConstantType,Nothing})
     constant_type = rel_type.constant_type
-    print(io, "ConstantType(")
-    show_rel_type(io, constant_type.rel_type)
-    print(io, ", ")
-    values = extract_values_from_proto(constant_type.value)
-    if length(values) == 1
-        show(io, values[1])
+    # Special case for printing a constant string, which in Julia is a `Symbol`.
+    if constant_type.rel_type.tag == protocol.Kind.PRIMITIVE_TYPE &&
+       constant_type.rel_type.primitive_type == protocol.PrimitiveType.STRING
+        print(io, ":")
+        print(io, extract_values_from_proto(constant_type.value)[1])
     else
-        Base.print_array(io, values)
+        show_rel_type(io, constant_type.rel_type)
+        print(io, "(")
+        values = extract_values_from_proto(constant_type.value)
+        if length(values) == 1
+            show(io, values[1])
+        else
+            show(io, values)
+        end
+        print(io, ")")
     end
-    print(io, ")")
     return nothing
 end
 # ValueType
@@ -103,4 +108,3 @@ function show_rel_type(io::IO, rel_type::protocol.RelType{Nothing,protocol.Value
     print(io, ")")
     return nothing
 end
-
