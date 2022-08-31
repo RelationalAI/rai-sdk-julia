@@ -91,12 +91,21 @@ function wait_until_done(ctx::Context, id::AbstractString; start_time_ns = nothi
             txn = get_transaction(ctx, id)
             return transaction_is_done(txn)
         end
-        t = @spawn get_transaction(ctx, id)
         m = @spawn get_transaction_metadata(ctx, id)
         p = @spawn get_transaction_problems(ctx, id)
         r = @spawn get_transaction_results(ctx, id)
-
-        return TransactionResponse(fetch(t), fetch(m), fetch(p), fetch(r))
+        try
+            return TransactionResponse(txn, fetch(m), fetch(p), fetch(r))
+        catch e
+            if e isa HTTPError && e.status_code == 404
+                # This is an (unfortunately) expected case if the engine crashes during a
+                # transaction, or the transaction is cancelled. The transaction is marked
+                # as ABORTED, but it has no results.
+                return TransactionResponse(txn, nothing, nothing, nothing)
+            else
+                rethrow()
+            end
+        end
     catch
         # Always print out the transaction id so that users can still get the txn ID even
         # if there's an error during polling (such as an InterruptException).
