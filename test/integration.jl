@@ -257,17 +257,17 @@ with_engine(CTX) do engine_name
                 @testset "empty arrow file" begin
                     query_string = "def output = true"
                     resp = exec(CTX, database_name, engine_name, query_string)
-                    @test show_result_str(resp) === """/:output
+                    @test show_result_str(resp) === """[:output]
                      ()
                     """
                 end
                 @testset "multiple physical relations" begin
                     query_string = ":a, 1;  :b, 2,3;  :b, 4,5"
                     resp = exec(CTX, database_name, engine_name, query_string)
-                    @test show_result_str(resp) === """/:output/:a/Int64
+                    @test show_result_str(resp) === """[:output, :a, Int64]
                      (1,)
 
-                    /:output/:b/Int64/Int64
+                    [:output, :b, Int64, Int64]
                      (2, 3)
                      (4, 5)
                     """

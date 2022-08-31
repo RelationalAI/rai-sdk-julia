@@ -31,13 +31,13 @@ function make_proto_metadata()
                     ConstantType(
                         RelType{Nothing,Nothing}(
                             Kind.PRIMITIVE_TYPE,
-                            PrimitiveType.SYMBOL,
+                            PrimitiveType.STRING,
                             nothing,
                             nothing,
                         ),
                         RelTuple(
                             PrimitiveValue[PrimitiveValue(
-                                PrimitiveType.SYMBOL,
+                                PrimitiveType.STRING,
                                 ProtoBuf.OneOf{Vector{UInt8}}(
                                     :string_val,
                                     UInt8[0x6f, 0x75, 0x74, 0x70, 0x75, 0x74], # output
@@ -201,7 +201,7 @@ end
 
         io = IOBuffer()
         show_result(io, rsp)
-        @test String(take!(io)) === """/ConstantType(Symbol, :output)/Int64
+        @test String(take!(io)) === """[:output, Int64]
          (4,)
         """
     end
