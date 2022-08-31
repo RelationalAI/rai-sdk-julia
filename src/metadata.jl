@@ -17,7 +17,6 @@ const proto_to_julia_type_map = Dict(
     protocol.PrimitiveType.FLOAT_32 => Float32,
     protocol.PrimitiveType.FLOAT_16 => Float16,
     protocol.PrimitiveType.STRING => String,
-    protocol.PrimitiveType.SYMBOL => Symbol,
     protocol.PrimitiveType.CHAR => Char,
     protocol.PrimitiveType.BOOL => Bool,
 )
