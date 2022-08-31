@@ -4,8 +4,8 @@ import HTTP, Arrow
 using JSON3
 using Mocking
 using Dates
-using RAI: _poll_until
 using RAI.protocol
+using RAI: _poll_with_specified_overhead
 
 using RAI: TransactionResponse
 
@@ -137,12 +137,12 @@ function make_arrow_table(vals)
     return Arrow.Table(io)
 end
 
-@testset "_poll_until" begin
-    @test isnothing(_poll_until(() -> true))
-    @test isnothing(_poll_until(() -> false; n=0))
-    @test isnothing(_poll_until(() -> false; n=1))
-    @test isnothing(_poll_until(() -> true; n=1, throw_on_max_n=true))
-    @test_throws String _poll_until(() -> false; n=1, throw_on_max_n=true)
+@testset "_poll_with_specified_overhead" begin
+    @test isnothing(_poll_with_specified_overhead(() -> true; overhead_rate = 0.01))
+    @test isnothing(_poll_with_specified_overhead(() -> false; overhead_rate = 0.01, n=0))
+    @test isnothing(_poll_with_specified_overhead(() -> false; overhead_rate = 0.01, n=1))
+    @test isnothing(_poll_with_specified_overhead(() -> true; overhead_rate = 0.01, n=1, throw_on_timeout=true))
+    @test_throws ErrorException _poll_with_specified_overhead(() -> false; overhead_rate = 0.01, n=1, throw_on_timeout=true)
 end
 
 @testset "exec_async" begin
@@ -240,8 +240,8 @@ end
         end
     end
     sym, val = collect(pairs(logs[1].kwargs))[1]
-    @test sym ≡ :transaction
-    @test val == JSON3.read("""{"id":"1fc9001b-1b88-8685-452e-c01bc6812429","state":"CREATED"}""")
+    @test sym ≡ :transaction_id
+    @test val == "1fc9001b-1b88-8685-452e-c01bc6812429"
 end
 
 @testset "exec with fast-path response only makes one request" begin

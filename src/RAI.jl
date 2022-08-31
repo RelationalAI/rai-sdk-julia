@@ -73,6 +73,7 @@ export
 export
     exec,
     exec_async,
+    wait_until_done,
     list_edbs,
     load_csv,
     load_json
@@ -100,6 +101,7 @@ include("rest.jl")
 include("gen/relationalai/relationalai.jl")
 import .relationalai.protocol
 include("metadata.jl")
+include("response.jl")
 include("api.jl")
 include("results.jl")
 

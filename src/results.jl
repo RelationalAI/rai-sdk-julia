@@ -22,20 +22,6 @@ struct TransactionResult
     _data::JSON3.Object
 end
 
-struct TransactionResponse
-    transaction::JSON3.Object
-    metadata::Union{protocol.MetadataInfo,Nothing}
-    problems::Union{JSON3.Array,Nothing}
-    results::Union{Vector{Pair{String, Arrow.Table}},Nothing}
-
-    TransactionResponse(
-        transaction::JSON3.Object,
-        metadata::Union{protocol.MetadataInfo,Nothing},
-        problems::Union{JSON3.Array,Nothing},
-        results::Union{Vector{Pair{String, Arrow.Table}},Nothing}
-    ) = new(transaction, metadata, problems, results)
-end
-
 _data(result::TransactionResult) = getfield(result, :_data)
 
 Base.getindex(result::TransactionResult, key) = _data(result)[key]
