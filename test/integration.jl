@@ -144,7 +144,17 @@ with_engine(CTX) do engine_name
                 @test resp.transaction[:state] == "COMPLETED"
 
                 # metadata
-                # TODO (dba): Test new ProtoBuf metadata.
+                @test length(resp.metadata.relations) == 1
+                # /ConstantType(Symbol, :output)/Int64/Int64/Int64/Int64
+                @test length(resp.metadata.relations[1].relation_id.arguments) == 5
+                for rel_type in resp.metadata.relations[1].relation_id.arguments[2:end]
+                    @test rel_type == RAI.protocol.RelType(
+                        RAI.protocol.Kind.PRIMITIVE_TYPE,
+                        RAI.protocol.PrimitiveType.INT_64,
+                        nothing,
+                        nothing,
+                    )
+                end
 
                 # problems
                 @test length(resp.problems) == 0
@@ -247,17 +257,17 @@ with_engine(CTX) do engine_name
                 @testset "empty arrow file" begin
                     query_string = "def output = true"
                     resp = exec(CTX, database_name, engine_name, query_string)
-                    @test show_result_str(resp) === """/:output
+                    @test show_result_str(resp) === """[:output]
                      ()
                     """
                 end
                 @testset "multiple physical relations" begin
                     query_string = ":a, 1;  :b, 2,3;  :b, 4,5"
                     resp = exec(CTX, database_name, engine_name, query_string)
-                    @test show_result_str(resp) === """/:output/:a/Int64
+                    @test show_result_str(resp) === """[:output, :a, Int64]
                      (1,)
 
-                    /:output/:b/Int64/Int64
+                    [:output, :b, Int64, Int64]
                      (2, 3)
                      (4, 5)
                     """

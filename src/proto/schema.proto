@@ -1,0 +1,182 @@
+syntax = "proto3";
+
+package relationalai.protocol;
+// Rel type definitions (primitive, constant and value) and schema.
+
+// Relations are currently identified by their type signature.
+message RelationId {
+    repeated RelType arguments = 1;
+}
+
+// Renamed from Tuple to avoid collision with julia and python `Tuple`.
+// Value types are flattened into their underlying primitive values.
+message RelTuple {
+   repeated PrimitiveValue arguments = 1;
+}
+
+// Named this way to avoid collision with julia's Core.{U,}Int128.
+message RelInt128 {
+    uint64 highbits = 1;
+    uint64 lowbits = 2;
+}
+message RelUInt128 {
+    uint64 highbits = 1;
+    uint64 lowbits = 2;
+}
+
+message PrimitiveValue {
+    // next available: 18
+
+    // Type tag indicates which value field is set
+    PrimitiveType tag = 1;
+
+    oneof value {
+        RelInt128 int128_val = 2;  // Not present in protobuf
+        int64 int64_val = 3;
+        int32 int32_val = 4;
+        int32 int16_val = 5;   // Not present in protobuf; int32
+        int32 int8_val = 6;    // Not present in protobuf; int32
+        RelUInt128 uint128_val = 7; // Not present in protobuf
+        uint64 uint64_val = 8;
+        uint32 uint32_val = 9;
+        uint32 uint16_val = 10;  // Not present in protobuf; uint32
+        uint32 uint8_val = 11;   // Not present in protobuf; uint32
+        double float64_val = 12;
+        float float32_val = 13;
+        float float16_val = 14; // Not present in protobuf
+        uint32 char_val = 15;
+        bool bool_val = 16;
+
+        // We use bytes for strings because proto has an encoding
+        // requirement for the proto3::string type.
+        bytes string_val = 17;
+    }
+}
+
+enum PrimitiveType {
+    // next available: 19
+
+    // We removed `SYMBOL` as a `PrimitiveType`
+    reserved 17;
+
+    // https://developers.google.com/protocol-buffers/docs/style#enums
+    UNSPECIFIED_TYPE = 0;
+
+    INT_128 = 1;  // Not present in protobuf, needs two 64-bit ints
+    INT_64 = 2;
+    INT_32 = 3;
+    INT_16 = 4;   // Not present in protobuf
+    INT_8 = 5;    // Not present in protobuf
+    UINT_128 = 6; // Not present in protobuf, needs two 64-bit ints
+    UINT_64 = 7;
+    UINT_32 = 8;
+    UINT_16 = 9;  // Not present in protobuf
+    UINT_8 = 10;   // Not present in protobuf
+    FLOAT_64 = 11;
+    FLOAT_32 = 12;
+    FLOAT_16 = 13; // Not present in protobuf
+    CHAR = 14;
+    BOOL = 15;
+    STRING = 16;   // In protobuf this is really bytes.
+
+    // VariableSizeStrings are not supported as PrimitiveValues, though the type can
+    // show up in (internal) type signatures.
+    VARIABLE_SIZE_STRING = 18;
+}
+
+message ValueType {
+    // Constant types are allowed, e.g. the `64` in `decimal[64]`. They serve as type
+    // parameters.
+    repeated RelType argument_types = 1;
+}
+
+// Every value can be used as a type.
+message ConstantType {
+   // Required
+   // This is the type of the constant and describes whatever is in the RelTuple value
+   RelType rel_type = 1;
+
+
+   // The tuple contains only the values that are not constant.
+   // E.g. for decimal[64](3.14) only 3.14 is part of the data.
+   // Required
+   // 
+   // Tuple because of e.g. specialize on Uniform distribution 
+   RelTuple value = 2;
+}
+
+enum Kind {
+    // https://developers.google.com/protocol-buffers/docs/style#enums
+    UNSPECIFIED_KIND = 0;
+
+    PRIMITIVE_TYPE = 1;
+    VALUE_TYPE = 2;
+    CONSTANT_TYPE = 3;
+}
+
+// Union
+message RelType {
+    Kind tag = 1;
+
+    // Only one of the following is allowed.
+    PrimitiveType primitive_type = 2;
+    ValueType value_type = 3;
+    ConstantType constant_type = 4;
+}
+
+// ---- Examples of how rel types are constructed: ----
+//
+// module rel:datetime
+//     type Date = Int64
+// end
+//
+// ValueType([ConstantType("rel"),      <= Symbol/RelName
+//            ConstantType("datetime"),
+//            ConstantType("Date"),
+//            Int64])
+//
+// For example "rel:datetime:Date", [:rel, :datetime, :Date]
+//
+// module rel:fixed_decimal[SIZE, PREC]
+//     type Decimal = Int[SIZE]
+// end
+//
+// ValueType([ConstantType(String, ("rel",)),
+//            ConstantType(String, ("fixed_decimal",)),
+//            ConstantType(Int64,  (64,)),                <= type params
+//            ConstantType(Int64,  (4,)),
+//            ConstantType(String, ("Decimal",)),
+//            Int64])
+//
+// module rel:statistical_distribution
+//     type Uniform = Float64,Float64
+// end
+//
+// ValueType([ConstantType(String, ("rel",)),
+//            ConstantType(String, ("statistical_distribution",)),
+//            ConstantType(String, ("Uniform",)),
+//            Float64,
+//            Float64])
+//
+// module whacky
+//     type A = Int, :B, Int
+// end
+//
+// ValueType([...
+//            Int64,
+//            ConstantType(String, "B"),
+//            Int64])
+//
+// module reuse
+//     type A = Int, Float
+//     type B = A, String
+// end
+//
+// ValueType([ConstantType("reuse"),
+//            ConstantType("B"),
+//            ValueType([ConstantType("reuse"),
+//                       ConstantType("A"),
+//                       Int64,
+//                       Float64
+//            ])
+//            String])

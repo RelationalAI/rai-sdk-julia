@@ -96,6 +96,11 @@ export
 include("creds.jl")
 include("config.jl")
 include("rest.jl")
+# Generated with:
+# ProtoBuf.protojl(readdir("src/proto"), "src/proto", "src/gen", parametrize_oneofs=true)
+include("gen/relationalai/relationalai.jl")
+import .relationalai.protocol
+include("metadata.jl")
 include("response.jl")
 include("api.jl")
 include("results.jl")

@@ -4,9 +4,12 @@ import HTTP, Arrow
 using JSON3
 using Mocking
 using Dates
+using RAI.protocol
 using RAI: _poll_with_specified_overhead
 
 using RAI: TransactionResponse
+
+import ProtoBuf
 
 Mocking.activate()
 
@@ -15,12 +18,61 @@ Mocking.activate()
 
 make_patch(response) = @patch RAI.request(ctx::Context, args...; kw...) = response
 
-const v2_async_response = HTTP.Response(200, [
-        "Content-Type" => "application/json",
-    ],
-    body = """{"id":"1fc9001b-1b88-8685-452e-c01bc6812429","state":"CREATED"}""")
+function make_proto_metadata()
+    # Corresponding to the following JSON metadata:
+    # [{"relationId":"/:output/Int64","types":[":output","Int64"]}]
+    return MetadataInfo(
+        RelationMetadata[RelationMetadata(
+            RelationId(RelType[
+                RelType{ConstantType,Nothing}(
+                    Kind.CONSTANT_TYPE,
+                    PrimitiveType.UNSPECIFIED_TYPE,
+                    nothing,
+                    ConstantType(
+                        RelType{Nothing,Nothing}(
+                            Kind.PRIMITIVE_TYPE,
+                            PrimitiveType.STRING,
+                            nothing,
+                            nothing,
+                        ),
+                        RelTuple(
+                            PrimitiveValue[PrimitiveValue(
+                                PrimitiveType.STRING,
+                                ProtoBuf.OneOf{Vector{UInt8}}(
+                                    :string_val,
+                                    UInt8[0x6f, 0x75, 0x74, 0x70, 0x75, 0x74], # output
+                                ),
+                            )],
+                        ),
+                    ),
+                ),
+                RelType{Nothing,Nothing}(
+                    Kind.PRIMITIVE_TYPE,
+                    PrimitiveType.INT_64,
+                    nothing,
+                    nothing,
+                ),
+            ],),
+            "0.arrow",
+        )],
+    )
+end
+function make_proto_metadata_string()
+    metadata = make_proto_metadata()
+    io = IOBuffer()
+    e = ProtoBuf.ProtoEncoder(io)
+    ProtoBuf.encode(e, metadata)
+    return String(take!(io))
+end
 
-const v2_get_results_response() = join([
+const v2_async_response = HTTP.Response(
+    200,
+    ["Content-Type" => "application/json"],
+    body="""{"id":"1fc9001b-1b88-8685-452e-c01bc6812429","state":"CREATED"}""",
+)
+
+const v2_get_results_response() = join(
+    [
         "--8a89e52be8efe57f0b68ea75388314a3",
         "Content-Disposition: form-data; name=\"/:output/Int64\"; filename=\"/:output/Int64\"",
         "Content-Type: application/vnd.apache.arrow.stream",
@@ -52,27 +104,31 @@ const v2_fastpath_response = HTTP.Response(200, [
         "Content-Type" => "Content-Type: multipart/form-data; boundary=8a89e52be8efe57f0b68ea75388314a3",
         "Transfer-Encoding" => "chunked",
     ],
-    body = join([
-    "",
-    "--8a89e52be8efe57f0b68ea75388314a3",
-    "Content-Disposition: form-data; name=\"transaction\"; filename=\"\"",
-    "Content-Type: application/json",
-    "",
-    """{"id":"a3e3bc91-0a98-50ba-733c-0987e160eb7d","results_format_version":"2.0.1","state":"COMPLETED"}""",
-    "--8a89e52be8efe57f0b68ea75388314a3",
-    "Content-Disposition: form-data; name=\"metadata\"; filename=\"\"",
-    "Content-Type: application/json",
-    "",
-    """[{"relationId":"/:output/Int64","types":[":output","Int64"]}]""",
-    "--8a89e52be8efe57f0b68ea75388314a3",
-    "Content-Disposition: form-data; name=\"problems\"; filename=\"\"",
-    "Content-Type: application/json",
-    "",
-    """[]""",
-    v2_get_results_response(),
-    "--8a89e52be8efe57f0b68ea75388314a3--",
-    "",
-], "\r\n"))
+    body=join(
+        [
+            "",
+            "--8a89e52be8efe57f0b68ea75388314a3",
+            "Content-Disposition: form-data; name=\"transaction\"; filename=\"\"",
+            "Content-Type: application/json",
+            "",
+            """{"id":"a3e3bc91-0a98-50ba-733c-0987e160eb7d","results_format_version":"2.0.1","state":"COMPLETED"}""",
+            "--8a89e52be8efe57f0b68ea75388314a3",
+            "Content-Disposition: form-data; name=\"metadata.proto\"; filename=\"\"",
+            "Content-Type: application/x-protobuf",
+            "",
+            make_proto_metadata_string(),
+            "--8a89e52be8efe57f0b68ea75388314a3",
+            "Content-Disposition: form-data; name=\"problems\"; filename=\"\"",
+            "Content-Type: application/json",
+            "",
+            """[]""",
+            v2_get_results_response(),
+            "--8a89e52be8efe57f0b68ea75388314a3--",
+            "",
+        ],
+        "\r\n",
+    ),
+)
 
 function make_arrow_table(vals)
     io = IOBuffer()
@@ -111,13 +167,8 @@ end
                     "results_format_version": "2.0.1",
                     "state": "COMPLETED"
                 }""")
-            @test rsp.metadata == [JSON3.read("""{
-                "relationId": "/:output/Int64",
-                    "types": [
-                                ":output",
-                                "Int64"
-                            ]
-            }""")]
+            # We unfortunately cannot test equality directly!
+            @test string(rsp.metadata) == string(make_proto_metadata())
             @test rsp.problems == Union{}[]
 
             # Test for the expected arrow data:
@@ -150,7 +201,7 @@ end
 
         io = IOBuffer()
         show_result(io, rsp)
-        @test String(take!(io)) === """/:output/Int64
+        @test String(take!(io)) === """[:output, Int64]
          (4,)
         """
     end

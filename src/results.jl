@@ -66,15 +66,15 @@ function show_result(io::IO, rsp::TransactionResponse)
     rsp.metadata === nothing && return
     rsp.results === nothing && return
 
-    for index in eachindex(rsp.metadata)
-        println(io, rsp.metadata[index]["relationId"])
-        data = rsp.results[index][2]
+    for (idx, relation_metadata) in enumerate(rsp.metadata.relations)
+        show_relation_id(io, relation_metadata.relation_id)
+        data = rsp.results[idx][2]
         tuples = isempty(data) ? [()] : zip(data...)
         # Reuse julia's array printing function to print this array of tuples.
         Base.print_array(io, collect(tuples))
 
         # Print trailing newline
-        if index !== last(eachindex(rsp.metadata))
+        if idx !== lastindex(rsp.metadata.relations)
             println(io, "\n")
         else
             println(io, "")

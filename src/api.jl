@@ -19,6 +19,7 @@
 # Julia language.
 
 import Arrow
+import ProtoBuf
 using Base.Threads: @spawn
 import Dates
 import JSON3
@@ -564,9 +565,14 @@ function exec_async(ctx::Context, database::AbstractString, engine::AbstractStri
     end
     body = JSON3.write(tx_body)
     path = _mkurl(ctx, PATH_ASYNC_TRANSACTIONS)
+    headers = _ensure_proto_accept_header(get(kw, :headers, []))
     rsp = @mock request(ctx, "POST", path; body = body, kw...)
     return _parse_response(rsp)
 end
+
+# We **only** support ProtoBuf metadata, so we overwrite the `Accept` header.
+_ensure_proto_accept_header(headers) =
+    collect(merge(Dict(headers), Dict("Accept" => "application/x-protobuf")))
 
 function _parse_response(rsp)
     content_type = HTTP.header(rsp, "Content-Type")
@@ -605,8 +611,12 @@ end
 
 function get_transaction_metadata(ctx::Context, id::AbstractString; kw...)
     path = PATH_ASYNC_TRANSACTIONS * "/$id/metadata"
-    rsp = _get(ctx, path; kw...)
-    return rsp
+    path = _mkurl(ctx, path)
+    headers = _ensure_proto_accept_header(get(kw, :headers, []))
+    rsp = request(ctx, "GET", path; kw..., headers)
+    d = ProtoBuf.ProtoDecoder(IOBuffer(rsp.body));
+    metadata = ProtoBuf.decode(d, protocol.MetadataInfo)
+    return metadata
 end
 
 function get_transaction_problems(ctx::Context, id::AbstractString; kw...)
@@ -631,12 +641,16 @@ function _parse_multipart_fastpath_sync_response(msg)
     #   ... HTTP.parse_multipart_form() copies the bytes into IOBuffers.
     parts = _parse_multipart_form(msg)
     @assert parts[1].name == "transaction"
-    @assert parts[2].name == "metadata"
 
     transaction = JSON3.read(parts[1])
-    metadata = JSON3.read(parts[2])
+
+    metadata_idx = findfirst(p->p.name == "metadata.proto", parts)
+    d = ProtoBuf.ProtoDecoder(parts[metadata_idx].data);
+    metadata = ProtoBuf.decode(d, protocol.MetadataInfo)
+
     problems_idx = findfirst(p->p.name == "problems", parts)
     problems = JSON3.read(parts[problems_idx])
+
     results = _extract_multipart_results_response(parts)
 
     return TransactionResponse(transaction, metadata, problems, results)
