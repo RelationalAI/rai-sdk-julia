@@ -23,6 +23,7 @@ import ProtoBuf
 using Base.Threads: @spawn
 import Dates
 import JSON3
+using ExceptionUnwrapping: has_wrapped_exception, unwrap_exception_to_root
 
 using Mocking: Mocking, @mock  # For unit testing, by mocking API server responses
 
@@ -97,7 +98,9 @@ function wait_until_done(ctx::Context, id::AbstractString; start_time_ns = nothi
         try
             return TransactionResponse(txn, fetch(m), fetch(p), fetch(r))
         catch e
-            if e isa HTTPError && e.status_code == 404
+            # (We use has_wrapped_exception to unwrap the TaskFailedException.)
+            if has_wrapped_exception(e, HTTPError) &&
+                unwrap_exception_to_root(e).status_code == 404
                 # This is an (unfortunately) expected case if the engine crashes during a
                 # transaction, or the transaction is cancelled. The transaction is marked
                 # as ABORTED, but it has no results.
