@@ -625,7 +625,7 @@ function get_transaction_metadata(ctx::Context, id::AbstractString; kw...)
     path = PATH_ASYNC_TRANSACTIONS * "/$id/metadata"
     path = _mkurl(ctx, path)
     headers = _ensure_proto_accept_header(get(kw, :headers, []))
-    rsp = request(ctx, "GET", path; kw..., headers)
+    rsp = @mock request(ctx, "GET", path; kw..., headers)
     d = ProtoBuf.ProtoDecoder(IOBuffer(rsp.body));
     metadata = ProtoBuf.decode(d, protocol.MetadataInfo)
     return metadata

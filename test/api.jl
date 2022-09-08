@@ -214,13 +214,13 @@ end
 end
 
 struct NetworkError code::Int end
-make_fail_second_time_patch(args...) =
-    make_fail_nth_time_patch(2, args...)
-function make_fail_nth_time_patch(n, first_response, exception)
+make_fail_after_second_time_patch(args...) =
+    make_fail_after_nth_time_patch(2, args...)
+function make_fail_after_nth_time_patch(n, first_response, exception)
     request_idx = 0
     return (ctx::Context, args...; kw...) -> begin
         request_idx += 1
-        if request_idx == n
+        if request_idx >= n
             throw(exception)
         else
             return first_response
@@ -239,7 +239,7 @@ end
     @testset "test that txn ID is logged for txn errors while polling" begin
         # Test for an error thrown _after_ the transaction is created, before it completes.
         sync_error_patch = Mocking.Patch(RAI.request,
-            make_fail_second_time_patch(v2_async_response, NetworkError(500)))
+            make_fail_after_second_time_patch(v2_async_response, NetworkError(500)))
 
         # See https://discourse.julialang.org/t/how-to-test-the-value-of-a-variable-from-info-log/37380/3
         # for an explanation of this logs-testing pattern.
@@ -260,7 +260,7 @@ end
         # Attempt to wait until a txn is done. This will attempt to fetch the metadata &
         # results once it's finished.
         metadata_404_patch = Mocking.Patch(RAI.request,
-            make_fail_second_time_patch(
+            make_fail_after_second_time_patch(
                 # get_transaction() returns a completed Transaction resource
                 v2_get_transaction_response_completed(),
                 # So then we attempt to fetch the metadata or results or problems, and error
@@ -278,7 +278,7 @@ end
 @testset "exec with fast-path response only makes one request" begin
     # Throw an error if the SDK attempts to make two requests to RAI API:
     only_1_request_patch = Mocking.Patch(RAI.request,
-        make_fail_second_time_patch(v2_fastpath_response, NetworkError(500)))
+        make_fail_after_second_time_patch(v2_fastpath_response, NetworkError(500)))
 
     ctx = Context("region", "scheme", "host", "2342", nothing, "audience")
     apply(only_1_request_patch) do
