@@ -23,6 +23,7 @@ import ProtoBuf
 using Base.Threads: @spawn
 import Dates
 import JSON3
+using ExceptionUnwrapping: has_wrapped_exception, unwrap_exception_to_root
 
 using Mocking: Mocking, @mock  # For unit testing, by mocking API server responses
 
@@ -91,12 +92,23 @@ function wait_until_done(ctx::Context, id::AbstractString; start_time_ns = nothi
             txn = get_transaction(ctx, id)
             return transaction_is_done(txn)
         end
-        t = @spawn get_transaction(ctx, id)
         m = @spawn get_transaction_metadata(ctx, id)
         p = @spawn get_transaction_problems(ctx, id)
         r = @spawn get_transaction_results(ctx, id)
-
-        return TransactionResponse(fetch(t), fetch(m), fetch(p), fetch(r))
+        try
+            return TransactionResponse(txn, fetch(m), fetch(p), fetch(r))
+        catch e
+            # (We use has_wrapped_exception to unwrap the TaskFailedException.)
+            if has_wrapped_exception(e, HTTPError) &&
+                unwrap_exception_to_root(e).status_code == 404
+                # This is an (unfortunately) expected case if the engine crashes during a
+                # transaction, or the transaction is cancelled. The transaction is marked
+                # as ABORTED, but it has no results.
+                return TransactionResponse(txn, nothing, nothing, nothing)
+            else
+                rethrow()
+            end
+        end
     catch
         # Always print out the transaction id so that users can still get the txn ID even
         # if there's an error during polling (such as an InterruptException).
@@ -613,7 +625,7 @@ function get_transaction_metadata(ctx::Context, id::AbstractString; kw...)
     path = PATH_ASYNC_TRANSACTIONS * "/$id/metadata"
     path = _mkurl(ctx, path)
     headers = _ensure_proto_accept_header(get(kw, :headers, []))
-    rsp = request(ctx, "GET", path; kw..., headers)
+    rsp = @mock request(ctx, "GET", path; kw..., headers)
     d = ProtoBuf.ProtoDecoder(IOBuffer(rsp.body));
     metadata = ProtoBuf.decode(d, protocol.MetadataInfo)
     return metadata
