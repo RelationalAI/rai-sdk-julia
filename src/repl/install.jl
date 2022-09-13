@@ -1,3 +1,7 @@
+function install_source(conn, name, src)
+    load_model(conn.ctx, conn.db, conn.engine, Dict(name => src))
+end
+
 function relfiles(dir, files = String[])
     for f in readdir(dir)
         path = joinpath(dir, f)
