@@ -64,15 +64,10 @@ function command(m::RegexMatch)
     elseif type == "db"
         if arg == nothing
             # TODO: list of dbs
-            println(conn.dbname)
+            println(conn.db)
         else
-            connect(Symbol(arg))
+            connect(arg)
         end
-    elseif type == "update"
-        # TODO error handling
-        evalrel(String(read(arg)))
-    elseif type == "query"
-        evalrel(String(read(arg)), readonly = true)
     elseif type == "clear"
         clear_db()
     else
