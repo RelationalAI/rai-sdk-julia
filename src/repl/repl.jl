@@ -81,8 +81,9 @@ end
 
 function evalrel(input; readonly = false)
     try
-        result = query(conn, input; readonly)
-        Base.eval(Main, :(ans = $result))
+        result = exec(conn.ctx, conn.db, conn.engine, input; readonly)
+        # Disabled until we decide the representation
+        # Base.eval(Main, :(ans = $result))
         replshow(stdout, result)
     catch
         Base.display_error(stdout, Base.catch_stack())
