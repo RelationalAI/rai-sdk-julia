@@ -235,9 +235,11 @@ function delete_engine(ctx::Context, engine::AbstractString; kw...)
 end
 
 function delete_model(ctx::Context, database::AbstractString, engine::AbstractString, model::AbstractString; kw...)
-    tx = Transaction(ctx.region, database, engine, "OPEN"; readonly = false)
-    actions = [_make_delete_models_action([model])]
-    return _post(ctx, PATH_TRANSACTION; query = query(tx), body = body(tx, actions...), kw...)
+    return exec(ctx, database, engine, """def delete:rel:catalog:model["$(model)"] =rel:catalog:model["$(model)"]"""; readonly=false, kw...)
+end
+
+function delete_model_async(ctx::Context, database::AbstractString, engine::AbstractString, model::AbstractString; kw...)
+    return exec_async(ctx, database, engine, """def delete:rel:catalog:model["$(model)"] =rel:catalog:model["$(model)"]"""; readonly=false, kw...)
 end
 
 function delete_oauth_client(ctx::Context, id::AbstractString; kw...)
@@ -691,11 +693,17 @@ function list_edbs(ctx::Context, database::AbstractString, engine::AbstractStrin
 end
 
 function _list_models(ctx::Context, database::AbstractString, engine::AbstractString; kw...)
-    tx = Transaction(ctx.region, database, engine, "OPEN"; readonly = true)
-    data = body(tx, _make_list_models_action())
-    rsp = _post(ctx, PATH_TRANSACTION; query = query(tx), body = data, kw...).actions
-    length(rsp) == 0 && return []
-    return rsp[1].result.sources
+    models = []
+    response = exec(ctx, database, engine, "def output:__models__ = rel:catalog:model", kw...);
+    for result in response.results
+        if occursin("/:output/:__models__", result.first)
+            append!(models, [Dict("name" => result.second.v1[i], "value" => result.second.v2[i]) for i in 1:length(result.second.v1)])
+        end
+    end
+
+    length(response.problems) != 0 && @warn response.problems
+
+    return models
 end
 
 function list_models(ctx::Context, database::AbstractString, engine::AbstractString; kw...)
@@ -773,12 +781,14 @@ function load_json(ctx::Context, database::AbstractString, engine::AbstractStrin
 end
 
 function load_model(ctx::Context, database::AbstractString, engine::AbstractString, models::Dict; kw...)
-    tx = Transaction(ctx.region, database, engine, "OPEN"; readonly = false)
-    actions = [_make_load_model_action(name, model) for (name, model) in models]
-    return _post(ctx, PATH_TRANSACTION; query = query(tx), body = body(tx, actions...), kw...)
+    queries = ["""def insert:rel:catalog:model["$(name)"] = \"\"\"$(models[name])\"\"\"""" for name in keys(models)]
+    return exec(ctx, database, engine, join(queries, "\n"); readonly = false, kw...)
 end
 
-
+function load_model_async(ctx::Context, database::AbstractString, engine::AbstractString, models::Dict; kw...)
+    queries = ["""def insert:rel:catalog:model["$(name)"] = \"\"\"$(models[name])\"\"\"""" for name in keys(models)]
+    return exec_async(ctx, database, engine, join(queries, "\n"); readonly = false, kw...)
+end
 
 # --- utils -------------------------
 # Patch for older versions of HTTP package that don't support parsing multipart responses:
