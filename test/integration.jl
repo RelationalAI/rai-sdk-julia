@@ -278,7 +278,23 @@ with_engine(CTX) do engine_name
 
         # -----------------------------------
         # models
-        @testset "models" begin end
+        @testset "models" begin
+            models = list_models(CTX, database_name, engine_name)
+            @test length(models) > 0
+
+            models = Dict("test_model" => "def foo = :bar")
+            resp = load_model(CTX, database_name, engine_name, models)
+            @test resp.transaction.state == "COMPLETED"
+
+            models = list_models(CTX, database_name, engine_name)
+            @test "test_model" in models
+
+            resp = delete_model(CTX, database_name, engine_name, "test_model")
+            @test resp.transaction.state == "COMPLETED"
+
+            models = list_models(CTX, database_name, engine_name)
+            @test !("test_model" in models)
+        end
     end
 end
 
