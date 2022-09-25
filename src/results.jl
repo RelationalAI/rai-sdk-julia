@@ -61,6 +61,38 @@ end
 show_result(io::IO, rsp::JSON3.Object) = show(io, TransactionResult(rsp))
 show_result(rsp::JSON3.Object) = show(stdout, TransactionResult(rsp))
 
+# A Column in a partition of a result set. A `Column` has a physical type `P`, the type in
+# the Arrow column and a logical type `L`. If a custom conversion method is registered the
+# physical type will be converted into the logical type when indexing into the column.
+struct Column{P,L}
+    arrow::AbstractVector{P}
+end
+function Column(col::Arrow.ArrowVector{P}, reltype::RAI.protocol.RelType) where {P}
+    # Is a custom logical type registered? 
+    L = RAI.RelTypes.JuliaType(reltype)
+    if isnothing(L)
+        return Column{P, P}(col)
+    else
+        return Column{P, L}(col)
+    end
+end
+
+function Base.getindex(col::Column{P,L}, idx::Int64) where {P,L}
+    # TODO (dba) I think there is a better way to do the bounds check?
+    length(col) >= idx || throw(BoundsError(col, idx))
+    return RAI.RelTypes.from_rel(L, col.arrow[idx])
+end
+function Base.getindex(col::Column{P,P}, idx::Int64) where {P}
+    # TODO (dba) I think there is a better way to do the bounds check?
+    length(col) >= idx || throw(BoundsError(col, idx))
+    return col.arrow[idx]
+end
+Base.length(col::Column) = length(col.arrow)
+Base.iterate(col::Column, state=1) = state>length(col) ? nothing : (col[state], state+1)
+Base.eltype(col::Type{Column{P,L}}) where {P,L} = L
+Base.size(col::Column) = 1
+Base.isdone(col::Column, state=1) = state > length(col)
+
 show_result(rsp::TransactionResponse) = show_result(stdout, rsp)
 function show_result(io::IO, rsp::TransactionResponse)
     rsp.metadata === nothing && return
@@ -68,8 +100,9 @@ function show_result(io::IO, rsp::TransactionResponse)
 
     for (idx, relation_metadata) in enumerate(rsp.metadata.relations)
         show_relation_id(io, relation_metadata.relation_id)
-        data = rsp.results[idx][2]
-        tuples = isempty(data) ? [()] : zip(data...)
+        # TODO (dba) Select the proper physical type here and removing the hard-coding!
+        columns = [Column(a, relation_metadata.relation_id.arguments[idx+1]) for (idx, a) in enumerate(rsp.results[idx][2])]
+        tuples = isempty(columns) ? [()] : zip(columns...)
         # Reuse julia's array printing function to print this array of tuples.
         Base.print_array(io, collect(tuples))
 
