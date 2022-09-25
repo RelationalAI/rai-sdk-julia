@@ -234,13 +234,22 @@ function delete_engine(ctx::Context, engine::AbstractString; kw...)
     return _delete(ctx, PATH_ENGINE; body = JSON3.write(data), kw...)
 end
 
-function delete_model(ctx::Context, database::AbstractString, engine::AbstractString, model::AbstractString; kw...)
-    return exec(ctx, database, engine, """def delete:rel:catalog:model["$(model)"] =rel:catalog:model["$(model)"]"""; readonly=false, kw...)
+function delete_models(ctx::Context, database::AbstractString, engine::AbstractString, models::Vector{String}; kw...)
+    queries = ["""
+            def delete:rel:catalog:model[$(_escape_string_for_rel(model))] = rel:catalog:model[$(_escape_string_for_rel(model))]
+        """ for model in models]
+    return exec(ctx, database, engine, join(queries, "\n"); readonly=false, kw...)
 end
 
-function delete_model_async(ctx::Context, database::AbstractString, engine::AbstractString, model::AbstractString; kw...)
-    return exec_async(ctx, database, engine, """def delete:rel:catalog:model["$(model)"] =rel:catalog:model["$(model)"]"""; readonly=false, kw...)
+function delete_models_async(ctx::Context, database::AbstractString, engine::AbstractString, model::AbstractString; kw...)
+    queries = ["""
+            def delete:rel:catalog:model[$(_escape_string_for_rel(model))] = rel:catalog:model[$(_escape_string_for_rel(model))
+        """ for model in models]
+    return exec_async(ctx, database, engine, join(queries, "\n"); readonly=false, kw...)
 end
+
+# escape rel special string
+_escape_string_for_rel(str) = replace(repr(str), '%' => "\\%")
 
 function delete_oauth_client(ctx::Context, id::AbstractString; kw...)
     return _delete(ctx, joinpath(PATH_OAUTH_CLIENTS, id); kw...)
@@ -272,11 +281,14 @@ function get_database(ctx::Context, database::AbstractString; kw...)
     return rsp[1]
 end
 
-# todo: move to rel query
 function get_model(ctx::Context, database::AbstractString, engine::AbstractString, name::AbstractString; kw...)
-    models = _list_models(ctx, database, engine; kw...)
-    for model in models
-        model["name"] == name && return model["value"]
+    out_name = "model$(rand(UInt32))"
+    query = """ def output:$out_name = rel:catalog:model[$(_escape_string_for_rel(name))] """
+    resp = exec(ctx, database, engine, query)
+    for result in resp.results
+        if occursin("/:output/:$out_name", result.first)
+            return first(result.second.v1)
+        end
     end
     throw(HTTPError(404))
 end
@@ -387,22 +399,6 @@ function _make_actions(actions...)
         push!(result, item)
     end
     return result
-end
-
-function _make_delete_models_action(models::Vector)
-    return Dict(
-        "type" => "ModifyWorkspaceAction",
-        "delete_source" => models)
-end
-
-function _make_load_model_action(name, model)
-    return Dict(
-        "type" => "InstallAction",
-        "sources" => [_make_query_source(name, model)])
-end
-
-function _make_list_models_action()
-    return Dict("type" => "ListSourceAction")
 end
 
 function _make_list_edb_action()
@@ -694,21 +690,26 @@ end
 
 function _list_models(ctx::Context, database::AbstractString, engine::AbstractString; kw...)
     models = []
-    response = exec(ctx, database, engine, "def output:__models__ = rel:catalog:model", kw...);
-    for result in response.results
-        if occursin("/:output/:__models__", result.first)
+    out_name = "models$(rand(UInt32))"
+    resp = exec(ctx, database, engine, "def output:$out_name = rel:catalog:model", kw...);
+    for result in resp.results
+        if occursin("/:output/:$out_name", result.first)
             append!(models, [Dict("name" => result.second.v1[i], "value" => result.second.v2[i]) for i in 1:length(result.second.v1)])
         end
     end
-
-    length(response.problems) != 0 && @warn response.problems
 
     return models
 end
 
 function list_models(ctx::Context, database::AbstractString, engine::AbstractString; kw...)
-    models = _list_models(ctx, database, engine; kw...)
-    return [model["name"] for model in models]
+    out_name = "model$(rand(UInt32))"
+    query = """ def output:$out_name[name] = rel:catalog:model(name, _) """
+    resp = exec(ctx, database, engine, query)
+    for result in resp.results
+        if occursin("/:output/:$out_name", result.first)
+            return [name for name in result.second.v1]
+        end
+    end
 end
 
 function _gen_literal(value)
@@ -780,13 +781,19 @@ function load_json(ctx::Context, database::AbstractString, engine::AbstractStrin
     return exec(ctx, database, engine, source; inputs = inputs, readonly = false, kw...)
 end
 
-function load_model(ctx::Context, database::AbstractString, engine::AbstractString, models::Dict; kw...)
-    queries = ["""def insert:rel:catalog:model["$(name)"] = \"\"\"$(models[name])\"\"\"""" for name in keys(models)]
+function load_models(ctx::Context, database::AbstractString, engine::AbstractString, models::Dict; kw...)
+    queries = [
+        """ def insert:rel:catalog:model[$(_escape_string_for_rel(name))] = $(_escape_string_for_rel(models[name])) """
+        for name in keys(models)
+    ]
+    println(queries)
     return exec(ctx, database, engine, join(queries, "\n"); readonly = false, kw...)
 end
 
-function load_model_async(ctx::Context, database::AbstractString, engine::AbstractString, models::Dict; kw...)
-    queries = ["""def insert:rel:catalog:model["$(name)"] = \"\"\"$(models[name])\"\"\"""" for name in keys(models)]
+function load_models_async(ctx::Context, database::AbstractString, engine::AbstractString, models::Dict; kw...)
+    queries = ["""def insert:rel:catalog:model["$(_escape_string_for_rel(name))"] =
+        \"\"\"$(_escape_string_for_rel(models[name]))\"\"\"""" for name in keys(models)
+    ]
     return exec_async(ctx, database, engine, join(queries, "\n"); readonly = false, kw...)
 end
 
