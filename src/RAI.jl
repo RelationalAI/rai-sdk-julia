@@ -100,6 +100,7 @@ include("rest.jl")
 # ProtoBuf.protojl(readdir("src/proto"), "src/proto", "src/gen", parametrize_oneofs=true)
 include("gen/relationalai/relationalai.jl")
 import .relationalai.protocol
+include("RelTypes/RelTypes.jl")
 include("metadata.jl")
 include("response.jl")
 include("api.jl")
