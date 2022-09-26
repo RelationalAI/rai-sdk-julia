@@ -688,18 +688,6 @@ function list_edbs(ctx::Context, database::AbstractString, engine::AbstractStrin
     return rsp.actions[1].result.rels
 end
 
-function _list_models(ctx::Context, database::AbstractString, engine::AbstractString; kw...)
-    models = []
-    out_name = "models$(rand(UInt32))"
-    resp = exec(ctx, database, engine, "def output:$out_name = rel:catalog:model", kw...);
-    for result in resp.results
-        if occursin("/:output/:$out_name", result.first)
-            append!(models, [Dict("name" => result.second.v1[i], "value" => result.second.v2[i]) for i in 1:length(result.second.v1)])
-        end
-    end
-
-    return models
-end
 
 function list_models(ctx::Context, database::AbstractString, engine::AbstractString; kw...)
     out_name = "model$(rand(UInt32))"
