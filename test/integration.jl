@@ -324,7 +324,7 @@ with_engine(CTX) do engine_name
             @test !("percent" in models)
 
             # test escape """
-            models = Dict("triple_quoted" => """def foo = "98\\%" """)
+            models = Dict("triple_quoted" => "def foo = \"\"\"98\\%\"\"\" ")
             resp = load_models(CTX, database_name, engine_name, models)
             @test resp.transaction.state == "COMPLETED"
             @test length(resp.problems) == 0
