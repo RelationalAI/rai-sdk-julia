@@ -312,6 +312,8 @@ with_engine(CTX) do engine_name
             resp = load_models(CTX, database_name, engine_name, models)
             @test resp.transaction.state == "COMPLETED"
             @test length(resp.problems) == 0
+            value = get_model(CTX, database_name, engine_name, "percent")
+            @test models["percent"] = value
 
             models = list_models(CTX, database_name, engine_name)
             @test "percent" in models
@@ -328,6 +330,8 @@ with_engine(CTX) do engine_name
             resp = load_models(CTX, database_name, engine_name, models)
             @test resp.transaction.state == "COMPLETED"
             @test length(resp.problems) == 0
+            value = get_model(CTX, database_name, engine_name, "triple_quoted")
+            @test models["triple_quoted"] = value
 
             models = list_models(CTX, database_name, engine_name)
             @test "triple_quoted" in models

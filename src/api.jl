@@ -234,20 +234,6 @@ function delete_engine(ctx::Context, engine::AbstractString; kw...)
     return _delete(ctx, PATH_ENGINE; body = JSON3.write(data), kw...)
 end
 
-function delete_models(ctx::Context, database::AbstractString, engine::AbstractString, models::Vector{String}; kw...)
-    queries = ["""
-            def delete:rel:catalog:model[$(_escape_string_for_rel(model))] = rel:catalog:model[$(_escape_string_for_rel(model))]
-        """ for model in models]
-    return exec(ctx, database, engine, join(queries, "\n"); readonly=false, kw...)
-end
-
-function delete_models_async(ctx::Context, database::AbstractString, engine::AbstractString, model::AbstractString; kw...)
-    queries = ["""
-            def delete:rel:catalog:model[$(_escape_string_for_rel(model))] = rel:catalog:model[$(_escape_string_for_rel(model))
-        """ for model in models]
-    return exec_async(ctx, database, engine, join(queries, "\n"); readonly=false, kw...)
-end
-
 # escape rel special string
 _escape_string_for_rel(str) = replace(repr(str), '%' => "\\%")
 
@@ -279,18 +265,6 @@ function get_database(ctx::Context, database::AbstractString; kw...)
     rsp = _get(ctx, PATH_DATABASE; query = query, kw...).databases
     length(rsp) == 0 && throw(HTTPError(404))
     return rsp[1]
-end
-
-function get_model(ctx::Context, database::AbstractString, engine::AbstractString, name::AbstractString; kw...)
-    out_name = "model$(rand(UInt32))"
-    query = """ def output:$out_name = rel:catalog:model[$(_escape_string_for_rel(name))] """
-    resp = exec(ctx, database, engine, query)
-    for result in resp.results
-        if occursin("/:output/:$out_name", result.first)
-            return first(result.second.v1)
-        end
-    end
-    throw(HTTPError(404))
 end
 
 function get_oauth_client(ctx::Context, id::AbstractString; kw...)
@@ -688,18 +662,6 @@ function list_edbs(ctx::Context, database::AbstractString, engine::AbstractStrin
     return rsp.actions[1].result.rels
 end
 
-
-function list_models(ctx::Context, database::AbstractString, engine::AbstractString; kw...)
-    out_name = "model$(rand(UInt32))"
-    query = """ def output:$out_name[name] = rel:catalog:model(name, _) """
-    resp = exec(ctx, database, engine, query)
-    for result in resp.results
-        if occursin("/:output/:$out_name", result.first)
-            return [name for name in result.second.v1]
-        end
-    end
-end
-
 function _gen_literal(value)
     return "$value"
 end
@@ -770,19 +732,80 @@ function load_json(ctx::Context, database::AbstractString, engine::AbstractStrin
 end
 
 function load_models(ctx::Context, database::AbstractString, engine::AbstractString, models::Dict; kw...)
-    queries = [
-        """ def insert:rel:catalog:model[$(_escape_string_for_rel(name))] = $(_escape_string_for_rel(models[name])) """
-        for name in keys(models)
-    ]
-    println(queries)
-    return exec(ctx, database, engine, join(queries, "\n"); readonly = false, kw...)
+    queries = []
+    queries_inputs = Dict()
+    rand_uint = rand(UInt32)
+
+    index = 0
+    for (name, value) in models
+        input_name = string("input_", rand_uint, "_", index)
+        push!(queries, """
+            def delete:rel:catalog:model["$name"] = rel:catalog:model["$name"]
+            def insert:rel:catalog:model["$name"] = $input_name
+        """)
+
+        queries_inputs[input_name] = value
+        index+=1
+    end
+
+    return exec(ctx, database, engine, join(queries, "\n"); inputs = queries_inputs, readonly = false, kw...)
 end
 
 function load_models_async(ctx::Context, database::AbstractString, engine::AbstractString, models::Dict; kw...)
-    queries = ["""def insert:rel:catalog:model["$(_escape_string_for_rel(name))"] =
-        \"\"\"$(_escape_string_for_rel(models[name]))\"\"\"""" for name in keys(models)
-    ]
-    return exec_async(ctx, database, engine, join(queries, "\n"); readonly = false, kw...)
+    queries = []
+    queries_inputs = Dict()
+    rand_uint = rand(UInt32)
+
+    index = 0
+    for (name, value) in models
+        input_name = string("input_", rand_uint, "_", index)
+        push!(queries, """
+            def delete:rel:catalog:model["$name"] = rel:catalog:model["$name"]
+            def insert:rel:catalog:model["$name"] = $input_name
+        """)
+
+        queries_inputs[input_name] = value
+        index+=1
+    end
+
+    return exec_async(ctx, database, engine, join(queries, "\n"); inputs = queries_inputs, readonly = false, kw...)
+end
+
+function list_models(ctx::Context, database::AbstractString, engine::AbstractString; kw...)
+    out_name = "model$(rand(UInt32))"
+    query = """ def output:$out_name[name] = rel:catalog:model(name, _) """
+    resp = exec(ctx, database, engine, query)
+    for result in resp.results
+        if occursin("/:output/:$out_name", result.first)
+            return [name for name in result.second.v1]
+        end
+    end
+end
+
+function get_model(ctx::Context, database::AbstractString, engine::AbstractString, name::AbstractString; kw...)
+    out_name = "model$(rand(UInt32))"
+    query = """ def output:$out_name = rel:catalog:model[$(_escape_string_for_rel(name))] """
+    resp = exec(ctx, database, engine, query)
+    for result in resp.results
+        if occursin("/:output/:$out_name", result.first)
+            return first(result.second.v1)
+        end
+    end
+    throw(HTTPError(404))
+end
+
+function delete_models(ctx::Context, database::AbstractString, engine::AbstractString, models::Vector{String}; kw...)
+    queries = ["""
+            def delete:rel:catalog:model[$(_escape_string_for_rel(model))] = rel:catalog:model[$(_escape_string_for_rel(model))]
+        """ for model in models]
+    return exec(ctx, database, engine, join(queries, "\n"); readonly=false, kw...)
+end
+
+function delete_models_async(ctx::Context, database::AbstractString, engine::AbstractString, model::AbstractString; kw...)
+    queries = ["""
+            def delete:rel:catalog:model[$(_escape_string_for_rel(model))] = rel:catalog:model[$(_escape_string_for_rel(model))
+        """ for model in models]
+    return exec_async(ctx, database, engine, join(queries, "\n"); readonly=false, kw...)
 end
 
 # --- utils -------------------------
