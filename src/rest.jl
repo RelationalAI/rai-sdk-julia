@@ -120,6 +120,6 @@ function request(
     isnothing(body) && (body = UInt8[])
     headers = _ensure_headers!(headers)
     _authenticate!(ctx, headers)
-    opts = (;redirect = false)
+    opts = (;redirect = false, connection_limit = 4096)
     return HTTP.request(method, url, headers; query = query, body = body, opts..., kw...)
 end
