@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.2.1
+* Increased `connection_limit` to 4096
+
 ## v0.2.0
 * Deprecate metadata JSON format.
 * Add support to deserialize ProtoBuf metadata.
