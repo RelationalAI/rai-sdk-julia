@@ -620,6 +620,11 @@ function get_transaction_results(ctx::Context, id::AbstractString; kw...)
     return _parse_multipart_results_response(rsp)
 end
 
+function cancel_transaction(ctx::Context, id::AbstractString; kw...)
+    path = PATH_ASYNC_TRANSACTIONS * "/$id/cancel"
+    return _post(ctx, path)
+end
+
 function _parse_multipart_fastpath_sync_response(msg)
     # TODO: in-place conversion to Arrow without copying the bytes.
     #   ... HTTP.parse_multipart_form() copies the bytes into IOBuffers.
