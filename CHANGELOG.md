@@ -1,5 +1,8 @@
 # Changelog
 
+## main
+* Update models actions to use v2 protocol
+* Update `load_model` to `load_models`
 ## v0.2.0
 * Deprecate metadata JSON format.
 * Add support to deserialize ProtoBuf metadata.
