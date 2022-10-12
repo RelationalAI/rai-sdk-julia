@@ -739,7 +739,7 @@ end
 function load_models(ctx::Context, database::AbstractString, engine::AbstractString, models::Dict; kw...)
     queries = []
     queries_inputs = Dict()
-    rand_uint = rand(UInt32)
+    rand_uint = rand(UInt64)
 
     index = 0
     for (name, value) in models
@@ -759,7 +759,7 @@ end
 function load_models_async(ctx::Context, database::AbstractString, engine::AbstractString, models::Dict; kw...)
     queries = []
     queries_inputs = Dict()
-    rand_uint = rand(UInt32)
+    rand_uint = rand(UInt64)
 
     index = 0
     for (name, value) in models
@@ -777,7 +777,7 @@ function load_models_async(ctx::Context, database::AbstractString, engine::Abstr
 end
 
 function list_models(ctx::Context, database::AbstractString, engine::AbstractString; kw...)
-    out_name = "model$(rand(UInt32))"
+    out_name = "model$(rand(UInt64))"
     query = """ def output:$out_name[name] = rel:catalog:model(name, _) """
     resp = exec(ctx, database, engine, query)
     for result in resp.results
@@ -788,8 +788,8 @@ function list_models(ctx::Context, database::AbstractString, engine::AbstractStr
 end
 
 function get_model(ctx::Context, database::AbstractString, engine::AbstractString, name::AbstractString; kw...)
-    out_name = "model$(rand(UInt32))"
-    query = """ def output:$out_name = rel:catalog:model[$(_escape_string_for_rel(name))] """
+    out_name = "model$(rand(UInt64))"
+    query = """def output:$out_name = rel:catalog:model[$(_escape_string_for_rel(name))]"""
     resp = exec(ctx, database, engine, query)
     for result in resp.results
         if occursin("/:output/:$out_name", result.first)
