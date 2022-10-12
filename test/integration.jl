@@ -278,7 +278,72 @@ with_engine(CTX) do engine_name
 
         # -----------------------------------
         # models
-        @testset "models" begin end
+        @testset "models" begin
+            models = list_models(CTX, database_name, engine_name)
+            @test length(models) > 0
+
+            models = Dict("test_model" => "def foo = :bar")
+            resp = load_models(CTX, database_name, engine_name, models)
+            @test resp.transaction.state == "COMPLETED"
+
+            value = get_model(CTX, database_name, engine_name, "test_model")
+            @test models["test_model"] == value
+
+            models = list_models(CTX, database_name, engine_name)
+            @test "test_model" in models
+
+            resp = delete_models(CTX, database_name, engine_name, ["test_model"])
+            @test resp.transaction.state == "COMPLETED"
+            @test length(resp.problems) == 0
+
+            models = list_models(CTX, database_name, engine_name)
+            @test !("test_model" in models)
+
+            # test escape special rel character
+            models = Dict("percent" => "def foo = \"98%\"")
+            resp = load_models(CTX, database_name, engine_name, models)
+            @test resp.transaction.state == "COMPLETED"
+            @test length(resp.problems) > 0
+            resp = delete_models(CTX, database_name, engine_name, ["percent"])
+            @test resp.transaction.state == "COMPLETED"
+            @test length(resp.problems) == 0
+
+            models = Dict("percent" => "def foo = \"98\\%\"")
+            resp = load_models(CTX, database_name, engine_name, models)
+            @test resp.transaction.state == "COMPLETED"
+            @test length(resp.problems) == 0
+            value = get_model(CTX, database_name, engine_name, "percent")
+            @test models["percent"] == value
+
+            models = list_models(CTX, database_name, engine_name)
+            @test "percent" in models
+
+            resp = delete_models(CTX, database_name, engine_name, ["percent"])
+            @test resp.transaction.state == "COMPLETED"
+            @test length(resp.problems) == 0
+
+            models = list_models(CTX, database_name, engine_name)
+            @test !("percent" in models)
+
+            # test escape """
+            models = Dict("triple_quoted" => "def foo = \"\"\"98\\%\"\"\" ")
+            resp = load_models(CTX, database_name, engine_name, models)
+            @test resp.transaction.state == "COMPLETED"
+            @test length(resp.problems) == 0
+            value = get_model(CTX, database_name, engine_name, "triple_quoted")
+            @test models["triple_quoted"] == value
+
+            models = list_models(CTX, database_name, engine_name)
+            @test "triple_quoted" in models
+            @test length(resp.problems) == 0
+
+            resp = delete_models(CTX, database_name, engine_name, ["triple_quoted"])
+            @test resp.transaction.state == "COMPLETED"
+            @test length(resp.problems) == 0
+
+            models = list_models(CTX, database_name, engine_name)
+            @test !("triple_quoted" in models)
+        end
     end
 end
 

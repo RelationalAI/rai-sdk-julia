@@ -1,5 +1,8 @@
 # Changelog
 
+## main
+* Update models actions to use v2 protocol
+* Update `load_model` to `load_models`
 ## v0.2.1
 * Increased `connection_limit` to 4096
 

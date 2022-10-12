@@ -12,16 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-# Delete the given Rel model from the given database.
+# Load the given Rel model into the given database.
 
-using RAI: Context, HTTPError, load_config, delete_model
+using RAI: Context, HTTPError, load_config, load_models
 
 include("parseargs.jl")
 
-function run(database, engine, model; profile)
+# Returns the file name without path and extension.
+_sansext(fullname) = first(splitext(last(splitdir(fullname))))
+
+function run(database, engine, fullname; profile)
+    models = Dict(_sansext(fullname) => read(fullname, String))
     cfg = load_config(; profile = profile)
     ctx = Context(cfg)
-    rsp = delete_model(ctx, database, engine, model)
+    rsp = load_models(ctx, database, engine, models)
     println(rsp)
 end
 
@@ -29,10 +33,10 @@ function main()
     args = parseargs(
         "database", Dict(:help => "database name", :required => true),
         "engine", Dict(:help => "engine name", :required => true),
-        "model", Dict(:help => "model name", :required => true),
+        "file", Dict(:help => "model file", :required => true),
         "--profile", Dict(:help => "config profile (default: default)"))
     try
-        run(args.database, args.engine, args.model; profile = args.profile)
+        run(args.database, args.engine, args.file; profile = args.profile)
     catch e
         e isa HTTPError ? show(e) : rethrow()
     end
