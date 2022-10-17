@@ -1,8 +1,11 @@
 using Test
 using RAI
+using JSON
+using ArgParse
 using RAI: transaction_id, _poll_with_specified_overhead
 
 import UUIDs
+
 
 # -----------------------------------
 # context & setup
@@ -10,6 +13,18 @@ import UUIDs
 # These are fairly unaggressive testing parameters, to try to not be too expensive on the
 # cloud. Time out after ten minutes of silence.
 const POLLING_KWARGS = (; overhead_rate = 0.20, timeout_secs = 10*60, throw_on_timeout = true)
+
+function parse_test_args()
+    s = ArgParseSettings()
+
+    @add_arg_table s begin
+        "--extra_headers"
+            help = "an option to pass extra headers"
+            required = false
+    end
+
+    return parse_args(s)
+end
 
 function test_context(profile_name = nothing)
     # If the ENV isn't configured for testing (local development), try using the local
@@ -50,13 +65,16 @@ rnd_test_name() = "julia-sdk-" * string(UUIDs.uuid4())
 function with_engine(f, ctx; existing_engine=nothing)
     engine_name = rnd_test_name()
     if isnothing(existing_engine)
-        engine_version = get(ENV, "RAI_ENGINE_VERSION", nothing)
+        extra_headers = parse_test_args()
         start_time_ns = time_ns()
-        if isnothing(engine_version)
+        if isnothing(extra_headers["extra_headers"])
             create_engine(ctx, engine_name)
         else
-            custom_headers = Dict(:"x-rai-parameter-compute-version"=>engine_version)
-            create_engine(ctx, engine_name; nothing, custom_headers)
+            # extra headers should be passed as a JSON string
+            # otherwise a runtime exception will be thrown
+            print("Extra Headers \n")
+            headers = Dict{String,String}(JSON.parse(extra_headers["extra_headers"]))
+            create_engine(ctx, engine_name; nothing, headers)
         end
         _poll_with_specified_overhead(; POLLING_KWARGS..., start_time_ns) do
             get_engine(ctx, engine_name)[:state] == "PROVISIONED"
