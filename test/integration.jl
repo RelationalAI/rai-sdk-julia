@@ -50,8 +50,14 @@ rnd_test_name() = "julia-sdk-" * string(UUIDs.uuid4())
 function with_engine(f, ctx; existing_engine=nothing)
     engine_name = rnd_test_name()
     if isnothing(existing_engine)
+        engine_version = get(ENV, "RAI_ENGINE_VERSION", nothing)
         start_time_ns = time_ns()
-        create_engine(ctx, engine_name)
+        if isnothing(engine_version)
+            create_engine(ctx, engine_name)
+        else
+            custom_headers = Dict(:"x-rai-parameter-compute-version"=>engine_version)
+            create_engine(ctx, engine_name; "XS", custom_headers)
+        end
         _poll_with_specified_overhead(; POLLING_KWARGS..., start_time_ns) do
             get_engine(ctx, engine_name)[:state] == "PROVISIONED"
         end
