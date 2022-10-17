@@ -13,18 +13,6 @@ import UUIDs
 # cloud. Time out after ten minutes of silence.
 const POLLING_KWARGS = (; overhead_rate = 0.20, timeout_secs = 10*60, throw_on_timeout = true)
 
-function parse_test_args()
-    s = ArgParseSettings()
-
-    @add_arg_table s begin
-        "--custom_headers"
-            help = "an option to pass custom headers"
-            required = false
-    end
-
-    return parse_args(s)
-end
-
 function test_context(profile_name = nothing)
     # If the ENV isn't configured for testing (local development), try using the local
     # Config file!
@@ -64,14 +52,14 @@ rnd_test_name() = "julia-sdk-" * string(UUIDs.uuid4())
 function with_engine(f, ctx; existing_engine=nothing)
     engine_name = rnd_test_name()
     if isnothing(existing_engine)
-        custom_headers = parse_test_args()
+        custom_headers = get(ENV, "CUSTOM_HEADERS", nothing)
         start_time_ns = time_ns()
-        if isnothing(custom_headers["custom_headers"])
+        if isnothing(custom_headers)
             create_engine(ctx, engine_name)
         else
             # custom headers should be passed as a JSON string
             # otherwise a runtime exception will be thrown
-            headers = JSON3.read(custom_headers["custom_headers"], Dict{String, String})
+            headers = JSON3.read(custom_headers, Dict{String, String})
             create_engine(ctx, engine_name; nothing, headers)
         end
         _poll_with_specified_overhead(; POLLING_KWARGS..., start_time_ns) do
