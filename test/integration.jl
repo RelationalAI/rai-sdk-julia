@@ -1,8 +1,10 @@
 using Test
 using RAI
+using ArgParse
 using RAI: transaction_id, _poll_with_specified_overhead
 
 import UUIDs
+
 
 # -----------------------------------
 # context & setup
@@ -50,8 +52,16 @@ rnd_test_name() = "julia-sdk-" * string(UUIDs.uuid4())
 function with_engine(f, ctx; existing_engine=nothing)
     engine_name = rnd_test_name()
     if isnothing(existing_engine)
+        custom_headers = get(ENV, "CUSTOM_HEADERS", nothing)
         start_time_ns = time_ns()
-        create_engine(ctx, engine_name)
+        if isnothing(custom_headers)
+            create_engine(ctx, engine_name)
+        else
+            # custom headers should be passed as a JSON string
+            # otherwise a runtime exception will be thrown
+            headers = JSON3.read(custom_headers, Dict{String, String})
+            create_engine(ctx, engine_name; nothing, headers)
+        end
         _poll_with_specified_overhead(; POLLING_KWARGS..., start_time_ns) do
             get_engine(ctx, engine_name)[:state] == "PROVISIONED"
         end
