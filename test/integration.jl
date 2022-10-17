@@ -1,6 +1,5 @@
 using Test
 using RAI
-using JSON
 using ArgParse
 using RAI: transaction_id, _poll_with_specified_overhead
 
@@ -18,8 +17,8 @@ function parse_test_args()
     s = ArgParseSettings()
 
     @add_arg_table s begin
-        "--extra_headers"
-            help = "an option to pass extra headers"
+        "--custom_headers"
+            help = "an option to pass custom headers"
             required = false
     end
 
@@ -65,15 +64,14 @@ rnd_test_name() = "julia-sdk-" * string(UUIDs.uuid4())
 function with_engine(f, ctx; existing_engine=nothing)
     engine_name = rnd_test_name()
     if isnothing(existing_engine)
-        extra_headers = parse_test_args()
+        custom_headers = parse_test_args()
         start_time_ns = time_ns()
-        if isnothing(extra_headers["extra_headers"])
+        if isnothing(custom_headers["custom_headers"])
             create_engine(ctx, engine_name)
         else
-            # extra headers should be passed as a JSON string
+            # custom headers should be passed as a JSON string
             # otherwise a runtime exception will be thrown
-            print("Extra Headers \n")
-            headers = Dict{String,String}(JSON.parse(extra_headers["extra_headers"]))
+            headers = JSON3.read(custom_headers["custom_headers"], Dict{String, String})
             create_engine(ctx, engine_name; nothing, headers)
         end
         _poll_with_specified_overhead(; POLLING_KWARGS..., start_time_ns) do
