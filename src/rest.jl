@@ -84,6 +84,47 @@ function get_access_token(ctx::Context, creds::ClientCredentials)::AccessToken
     return AccessToken(data.access_token, data.scope, data.expires_in, now())
 end
 
+# cache name
+function _cache_file()
+    return joinpath(homedir(), ".rai", "tokens.json")
+end
+
+# read oauth cache
+function _read_cache()
+    try
+        cache = JSON3.read(read(_cache_file(), String))
+        return cache === nothing ? Dict() : cache
+    catch
+        return Dict()
+    end
+end
+
+# Read access token from cache
+function _read_token_cache(creds::ClientCredentials)
+    try
+        cache = _read_cache()
+        access_token = cache[creds.client_id]
+        return AccessToken(
+            access_token["token"],
+            access_token["scope"],
+            access_token["expires_in"],
+            DateTime(access_token["created_on"], "yyyy-mm-ddTHH:MM:SS.ss"),
+        )
+    catch
+        return nothing
+    end
+end
+
+# Write access token to cache
+function _write_token_cache(creds::ClientCredentials)
+    try
+        cache = _read_cache()
+        cache[creds.client_id] = creds.access_token
+        write(_cache_file(), JSON3.write(cache))
+    catch
+    end
+end
+
 function _get_client_credentials_url(creds::ClientCredentials)
     return !isnothing(creds.client_credentials_url) ?
            creds.client_credentials_url : "https://login.relationalai.com/oauth/token"
@@ -102,12 +143,18 @@ function _authenticate!(
     headers,
 )::Nothing
     if isnothing(creds.access_token)
-        creds.access_token = get_access_token(ctx, creds)
+        creds.access_token = _read_token_cache(creds)
+        if isnothing(creds.access_token)
+            creds.access_token = get_access_token(ctx, creds)
+            _write_token_cache(creds)
+        end
     end
 
     if isexpired(creds.access_token)
         creds.access_token = get_access_token(ctx, creds)
+        _write_token_cache(creds)
     end
+
     push!(headers, "Authorization" => "Bearer $(creds.access_token.token)")
     return nothing
 end
