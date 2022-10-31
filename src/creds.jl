@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-using Dates: DateTime, Second
+using Dates: datetime2unix
 
 """
     AccessToken
@@ -23,21 +23,21 @@ but we can still print the secret if needed:
 
 Example:
 ```
-access_token.token
+t.access_token
 ````
 """
 struct AccessToken
-    token::String
+    access_token::String
     scope::String
     expires_in::Int  # seconds
-    created_on::DateTime
+    created_on::Float64
 end
 
 function Base.show(io::IO, t::AccessToken)
     print(
         io,
         "(",
-        isempty(t.token) ? "" : "$(t.token[1:3])...",
+        isempty(t.access_token) ? "" : "$(t.access_token[1:3])...",
         ", ", t.scope,
         ", ", t.expires_in,
         ", ", t.created_on,
@@ -46,8 +46,8 @@ function Base.show(io::IO, t::AccessToken)
 end
 
 function isexpired(access_token::AccessToken)::Bool
-    expires_on = access_token.created_on + Second(access_token.expires_in)
-    return expires_on - Second(5) < now() # anticipate token expiration by 5 seconds
+    expires_on = access_token.created_on + access_token.expires_in
+    return expires_on - 5 < datetime2unix(now()) # anticipate token expiration by 5 seconds
 end
 
 abstract type Credentials end
@@ -78,8 +78,8 @@ function Base.show(io::IO, c::ClientCredentials)
         io,
         "(",
         c.client_id,
-        c.client_secret == nothing ? "" : ", $(c.client_secret[1:3])...",
-        c.access_token == nothing ? "" : ", $(c.access_token)",
+        c.client_secret === nothing ? "" : ", $(c.client_secret[1:3])...",
+        c.access_token === nothing ? "" : ", $(c.access_token)",
         ", ",
         c.client_credentials_url,
         ")"

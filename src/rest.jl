@@ -15,7 +15,7 @@
 # Low level HTTP interface to the RAI REST API. Handles authentication of
 # requests and other protocol level details.
 
-using Dates: now
+using Dates: now, datetime2unix
 import HTTP
 import JSON3
 
@@ -81,7 +81,7 @@ function get_access_token(ctx::Context, creds::ClientCredentials)::AccessToken
     opts = (redirect = false, retry_non_idempotent = true)
     rsp = HTTP.request("POST", url, h, body; opts...)
     data = JSON3.read(rsp.body)
-    return AccessToken(data.access_token, data.scope, data.expires_in, now())
+    return AccessToken(data.access_token, data.scope, data.expires_in, datetime2unix(now()))
 end
 
 # cache name
@@ -92,10 +92,10 @@ end
 # read oauth cache
 function _read_cache()
     try
-        cache = JSON3.read(read(_cache_file(), String))
-        return cache === nothing ? Dict() : cache
-    catch
-        return Dict()
+        return copy(JSON3.read(read(_cache_file(), String)))
+    catch e
+        println(e)
+        return nothing
     end
 end
 
@@ -105,10 +105,10 @@ function _read_token_cache(creds::ClientCredentials)
         cache = _read_cache()
         access_token = cache[creds.client_id]
         return AccessToken(
-            access_token["token"],
+            access_token["access_token"],
             access_token["scope"],
             access_token["expires_in"],
-            DateTime(access_token["created_on"], "yyyy-mm-ddTHH:MM:SS.ss"),
+            access_token["created_on"],
         )
     catch
         return nothing
@@ -119,7 +119,11 @@ end
 function _write_token_cache(creds::ClientCredentials)
     try
         cache = _read_cache()
-        cache[creds.client_id] = creds.access_token
+        if cache === nothing
+            cache = Dict(creds.client_id => creds.access_token)
+        else
+            cache[Symbol(creds.client_id)] = creds.access_token
+        end
         write(_cache_file(), JSON3.write(cache))
     catch
     end
@@ -155,7 +159,7 @@ function _authenticate!(
         _write_token_cache(creds)
     end
 
-    push!(headers, "Authorization" => "Bearer $(creds.access_token.token)")
+    push!(headers, "Authorization" => "Bearer $(creds.access_token.access_token)")
     return nothing
 end
 
