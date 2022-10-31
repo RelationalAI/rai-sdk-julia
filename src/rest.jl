@@ -93,8 +93,7 @@ end
 function _read_cache()
     try
         return copy(JSON3.read(read(_cache_file(), String)))
-    catch e
-        println(e)
+    catch
         return nothing
     end
 end

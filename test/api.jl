@@ -287,11 +287,11 @@ end
 end
 
 @testset "hide client secrets in repl" begin
-    access_token = AccessToken("abc_token", "run:transaction", 3600, DateTime("2022-08-12T17:49:51.365"))
+    access_token = AccessToken("abc_token", "run:transaction", 3600, datetime2unix(DateTime("2022-08-12T17:49:51.365")))
     creds = ClientCredentials("client_id", "xyz_client_secret", "https://login.relationalai.com/oauth/token")
     creds.access_token = access_token
 
     io = IOBuffer()
     show(io, creds)
-    @test String(take!(io)) === "(client_id, xyz..., (abc..., run:transaction, 3600, 2022-08-12T17:49:51.365), https://login.relationalai.com/oauth/token)"
+    @test String(take!(io)) === "(client_id, xyz..., (abc..., run:transaction, 3600, 1.660326591365e9), https://login.relationalai.com/oauth/token)"
 end
