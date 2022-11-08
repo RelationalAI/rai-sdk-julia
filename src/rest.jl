@@ -79,7 +79,10 @@ function get_access_token(ctx::Context, creds::ClientCredentials)::AccessToken
         "grant_type": "client_credentials"
     }"""
     opts = (redirect = false, retry_non_idempotent = true)
-    rsp = HTTP.request("POST", url, h, body; opts...)
+    timed = @timed HTTP.request("POST", url, h, body; opts...)
+    rsp = timed.value
+    @info "get_access_token HTTP request took $(timed.time)"
+
     data = JSON3.read(rsp.body)
     return AccessToken(data.access_token, data.scope, data.expires_in, now())
 end
