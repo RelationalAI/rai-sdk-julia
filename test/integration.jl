@@ -38,9 +38,13 @@ function test_context(profile_name = nothing)
     client_secret = ENV["CLIENT_SECRET"]
     client_credentials_urls = ENV["CLIENT_CREDENTIALS_URL"]
     audience = get(ENV, "CLIENT_AUDIENCE", nothing)
+    rai_host = get(ENV, "HOST", nothing)
+    if isnothing(rai_host)
+        rai_host = "azure.relationalai.com"
+    end
 
     credentials = ClientCredentials(client_id, client_secret, client_credentials_urls)
-    config = Config("us-east", "https", "azure.relationalai.com", "443", credentials, audience)
+    config = Config("us-east", "https", rai_host, "443", credentials, audience)
 
     return Context(config)
 end
