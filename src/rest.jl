@@ -78,7 +78,7 @@ function get_access_token(ctx::Context, creds::ClientCredentials)::AccessToken
         "audience": $(repr(ctx.audience)),
         "grant_type": "client_credentials"
     }"""
-    opts = (redirect = false, retry_non_idempotent = true)
+    opts = (redirect = false, retry_non_idempotent = true, connect_timeout = 30, readtimeout = 30, keepalive = true)
     timed = @timed HTTP.request("POST", url, h, body; opts...)
     rsp = timed.value
     @info "get_access_token HTTP request took $(timed.time)"
