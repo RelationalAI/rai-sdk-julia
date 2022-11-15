@@ -1,0 +1,48 @@
+name: 'rai-sdk-julia test'
+description: 'rai-sdk-julia test action'
+
+inputs:
+  client_id:
+    required: true
+    description: 'Client ID for oAuth'
+
+  client_secret:
+    required: true
+    description: 'Client secret for oAuth'
+
+  client_credentials_url:
+    required: true
+    description: 'Client credentials url for fetching the oAuth token'
+
+  rai_host:
+    required: false
+    description: 'RAI host'
+    default: 'azure.relationalai.com'
+
+  custom_headers:
+    required: false
+    description: 'Optional http headers'
+    default: '{}'
+
+runs:
+  using: 'composite'
+  steps:
+    - uses: actions/checkout@v3
+      with:
+        repository: RelationalAI/rai-sdk-julia
+
+    - uses: julia-actions/setup-julia@v1
+      with:
+        version: ${{ matrix.version }}
+        arch: ${{ matrix.arch }}
+    - uses: julia-actions/cache@v1
+    - uses: julia-actions/julia-buildpkg@v1
+
+    - name: Test
+      uses: julia-actions/julia-runtest@v1
+      env:
+        CLIENT_ID: ${{ inputs.client_id }}
+        CLIENT_SECRET: ${{ inputs.client_secret }}
+        CLIENT_CREDENTIALS_URL: ${{ inputs.client_credentials_url }}
+        HOST: ${{ inputs.rai_host }}
+        CUSTOM_HEADERS: ${{ inputs.custom_headers }}
