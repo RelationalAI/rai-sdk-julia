@@ -255,16 +255,28 @@ end
 
 function get_engine(ctx::Context, engine::AbstractString; kw...)
     query = Dict("name" => engine, "deleted_on" => "")
-    rsp = _get(ctx, PATH_ENGINE; query = query, kw...).computes
-    length(rsp) == 0 && throw(HTTPError(404))
-    return rsp[1]
+    rsp = _get(ctx, PATH_ENGINE; query = query, kw...)
+    try
+        computes = rsp.computes
+        (computes === nothing || length(computes) == 0) && throw(HTTPError(404))
+        return computes[1]
+    catch
+        @warn "Caught exception when parsing JSON: $rsp"
+        rethrow()
+    end
 end
 
 function get_database(ctx::Context, database::AbstractString; kw...)
     query = Dict("name" => database)
-    rsp = _get(ctx, PATH_DATABASE; query = query, kw...).databases
-    length(rsp) == 0 && throw(HTTPError(404))
-    return rsp[1]
+    rsp = _get(ctx, PATH_DATABASE; query = query, kw...)
+    try
+        databases = rsp.databases
+        (databases === nothing || length(databases) == 0) && throw(HTTPError(404))
+        return databases[1]
+    catch
+        @warn "Caught exception when parsing JSON: $rsp"
+        rethrow()
+    end
 end
 
 function get_oauth_client(ctx::Context, id::AbstractString; kw...)
