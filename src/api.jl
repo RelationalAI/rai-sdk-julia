@@ -258,7 +258,7 @@ function get_engine(ctx::Context, engine::AbstractString; kw...)
     rsp = _get(ctx, PATH_ENGINE; query = query, kw...)
     try
         computes = rsp.computes
-        (computes === nothing || length(computes) == 0) && throw(HTTPError(404))
+        length(computes) == 0 && throw(HTTPError(404))
         return computes[1]
     catch
         @warn "Caught exception when parsing JSON: $rsp"
@@ -271,7 +271,7 @@ function get_database(ctx::Context, database::AbstractString; kw...)
     rsp = _get(ctx, PATH_DATABASE; query = query, kw...)
     try
         databases = rsp.databases
-        (databases === nothing || length(databases) == 0) && throw(HTTPError(404))
+        length(databases) == 0 && throw(HTTPError(404))
         return databases[1]
     catch
         @warn "Caught exception when parsing JSON: $rsp"
