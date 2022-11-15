@@ -280,7 +280,13 @@ function get_database(ctx::Context, database::AbstractString; kw...)
 end
 
 function get_oauth_client(ctx::Context, id::AbstractString; kw...)
-    return _get(ctx, joinpath(PATH_OAUTH_CLIENTS, id); kw...).client
+    rsp = _get(ctx, joinpath(PATH_OAUTH_CLIENTS, id); kw...)
+    try
+        return rsp.client
+    catch
+        @warn "Caught exception when parsing JSON: $rsp"
+        rethrow()
+    end
 end
 
 # Returns the user with the given email.
@@ -293,25 +299,55 @@ function find_user(ctx::Context, email::AbstractString; kw...)
 end
 
 function get_user(ctx::Context, userid::AbstractString; kw...)
-    return _get(ctx, joinpath(PATH_USERS, userid); kw...).user
+    rsp = _get(ctx, joinpath(PATH_USERS, userid); kw...)
+    try
+        return rsp.user
+    catch
+        @warn "Caught exception when parsing JSON: $rsp"
+        rethrow()
+    end
 end
 
 function list_databases(ctx::Context; state = nothing, kw...)
     query = _filter("state" => state)
-    return _get(ctx, PATH_DATABASE; query = query, kw...).databases
+    rsp = _get(ctx, PATH_DATABASE; query = query, kw...)
+    try
+        return rsp.databases
+    catch
+        @warn "Caught exception when parsing JSON: $rsp"
+        rethrow()
+    end
 end
 
 function list_engines(ctx::Context; state = nothing, kw...)
     query = _filter("state" => state)
-    return _get(ctx, PATH_ENGINE; query = query, kw...).computes
+    rsp = _get(ctx, PATH_ENGINE; query = query, kw...)
+    try
+        return rsp.computes
+    catch
+        @warn "Caught exception when parsing JSON: $rsp"
+        rethrow()
+    end
 end
 
 function list_oauth_clients(ctx::Context; kw...)
-    return _get(ctx, PATH_OAUTH_CLIENTS; kw...).clients
+    rsp = _get(ctx, PATH_OAUTH_CLIENTS; kw...)
+    try
+        return rsp.clients
+    catch
+        @warn "Caught exception when parsing JSON: $rsp"
+        rethrow()
+    end
 end
 
 function list_users(ctx::Context; kw...)
-    return _get(ctx, PATH_USERS; kw...).users
+    rsp = _get(ctx, PATH_USERS; kw...)
+    try
+        return rsp.users
+    catch
+        @warn "Caught exception when parsing JSON: $rsp"
+        rethrow()
+    end
 end
 
 function update_user(ctx::Context, userid::AbstractString; status = nothing, roles = nothing, kw...)
