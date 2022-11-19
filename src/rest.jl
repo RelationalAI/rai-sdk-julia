@@ -92,8 +92,13 @@ end
 # read oauth cache
 function _read_cache()
     try
-        return copy(JSON3.read(read(_cache_file(), String)))
-    catch
+        if isfile(_cache_file())
+            return copy(JSON3.read(read(_cache_file())))
+        else
+            return nothing
+        end
+    catch e
+        @warn e
         return nothing
     end
 end
@@ -102,14 +107,21 @@ end
 function _read_token_cache(creds::ClientCredentials)
     try
         cache = _read_cache()
-        access_token = cache[creds.client_id]
-        return AccessToken(
-            access_token["access_token"],
-            access_token["scope"],
-            access_token["expires_in"],
-            access_token["created_on"],
-        )
-    catch
+        cache === nothing && return nothing
+
+        if creds.client_id in keys(cache)
+            access_token = cache[creds.client_id]
+            return AccessToken(
+                access_token["access_token"],
+                access_token["scope"],
+                access_token["expires_in"],
+                access_token["created_on"],
+            )
+        else
+            return nothing
+        end
+    catch e
+        @warn e
         return nothing
     end
 end
@@ -124,7 +136,8 @@ function _write_token_cache(creds::ClientCredentials)
             cache[Symbol(creds.client_id)] = creds.access_token
         end
         write(_cache_file(), JSON3.write(cache))
-    catch
+    catch e
+        @warn e
     end
 end
 
