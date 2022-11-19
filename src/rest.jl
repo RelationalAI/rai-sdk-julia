@@ -92,7 +92,7 @@ end
 # read oauth cache
 function _read_cache()
     try
-        return copy(JSON3.read(read(_cache_file(), String)))
+        return copy(JSON3.read(read(_cache_file())))
     catch
         return nothing
     end
