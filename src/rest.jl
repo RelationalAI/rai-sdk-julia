@@ -109,7 +109,7 @@ function _read_token_cache(creds::ClientCredentials)
         cache = _read_cache()
         cache === nothing && return nothing
 
-        if creds.client_id in keys(cache)
+        if haskey(cache, creds.client_id)
             access_token = cache[creds.client_id]
             return AccessToken(
                 access_token["access_token"],
