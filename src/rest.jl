@@ -15,7 +15,7 @@
 # Low level HTTP interface to the RAI REST API. Handles authentication of
 # requests and other protocol level details.
 
-using Dates: now
+using Dates: now, datetime2unix
 import HTTP
 import JSON3
 
@@ -81,7 +81,64 @@ function get_access_token(ctx::Context, creds::ClientCredentials)::AccessToken
     opts = (redirect = false, retry_non_idempotent = true, connect_timeout = 30, readtimeout = 30, keepalive = true)
     rsp = HTTP.request("POST", url, h, body; opts...)
     data = JSON3.read(rsp.body)
-    return AccessToken(data.access_token, data.scope, data.expires_in, now())
+    return AccessToken(data.access_token, data.scope, data.expires_in, datetime2unix(now()))
+end
+
+# cache name
+function _cache_file()
+    return joinpath(homedir(), ".rai", "tokens.json")
+end
+
+# read oauth cache
+function _read_cache()
+    try
+        if isfile(_cache_file())
+            return copy(JSON3.read(read(_cache_file())))
+        else
+            return nothing
+        end
+    catch e
+        @warn e
+        return nothing
+    end
+end
+
+# Read access token from cache
+function _read_token_cache(creds::ClientCredentials)
+    try
+        cache = _read_cache()
+        cache === nothing && return nothing
+
+        if haskey(cache, Symbol(creds.client_id))
+            access_token = cache[Symbol(creds.client_id)]
+            return AccessToken(
+                access_token[:access_token],
+                access_token[:scope],
+                access_token[:expires_in],
+                access_token[:created_on],
+            )
+        else
+            return nothing
+        end
+    catch e
+        @warn e
+        return nothing
+    end
+end
+
+# Write access token to cache
+function _write_token_cache(creds::ClientCredentials)
+    try
+        cache = _read_cache()
+        if cache === nothing
+            cache = Dict(creds.client_id => creds.access_token)
+        else
+            cache[Symbol(creds.client_id)] = creds.access_token
+        end
+        write(_cache_file(), JSON3.write(cache))
+    catch e
+        @warn e
+    end
 end
 
 function _get_client_credentials_url(creds::ClientCredentials)
@@ -102,13 +159,19 @@ function _authenticate!(
     headers,
 )::Nothing
     if isnothing(creds.access_token)
-        creds.access_token = get_access_token(ctx, creds)
+        creds.access_token = _read_token_cache(creds)
+        if isnothing(creds.access_token)
+            creds.access_token = get_access_token(ctx, creds)
+            _write_token_cache(creds)
+        end
     end
 
     if isexpired(creds.access_token)
         creds.access_token = get_access_token(ctx, creds)
+        _write_token_cache(creds)
     end
-    push!(headers, "Authorization" => "Bearer $(creds.access_token.token)")
+
+    push!(headers, "Authorization" => "Bearer $(creds.access_token.access_token)")
     return nothing
 end
 
