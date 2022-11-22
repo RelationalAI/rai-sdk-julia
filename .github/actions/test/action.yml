@@ -38,6 +38,10 @@ runs:
     - uses: julia-actions/cache@v1
     - uses: julia-actions/julia-buildpkg@v1
 
+    # this folder is required to test access token caching
+    - name: Init rai config folder
+      run: mkdir -p ~/.rai
+
     - name: Test
       uses: julia-actions/julia-runtest@v1
       env:
