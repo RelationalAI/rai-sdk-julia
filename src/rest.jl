@@ -109,13 +109,13 @@ function _read_token_cache(creds::ClientCredentials)
         cache = _read_cache()
         cache === nothing && return nothing
 
-        if haskey(cache, creds.client_id)
-            access_token = cache[creds.client_id]
+        if haskey(cache, Symbol(creds.client_id))
+            access_token = cache[Symbol(creds.client_id)]
             return AccessToken(
-                access_token["access_token"],
-                access_token["scope"],
-                access_token["expires_in"],
-                access_token["created_on"],
+                access_token[:access_token],
+                access_token[:scope],
+                access_token[:expires_in],
+                access_token[:created_on],
             )
         else
             return nothing

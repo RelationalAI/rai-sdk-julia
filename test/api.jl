@@ -5,7 +5,7 @@ using JSON3
 using Mocking
 using Dates
 using RAI.protocol
-using RAI: _poll_with_specified_overhead
+using RAI: _poll_with_specified_overhead, _write_token_cache, _read_token_cache
 
 using RAI: TransactionResponse
 
@@ -294,4 +294,17 @@ end
     io = IOBuffer()
     show(io, creds)
     @test String(take!(io)) === "(client_id, xyz..., (abc..., run:transaction, 3600, 1.660326591365e9), https://login.relationalai.com/oauth/token)"
+end
+
+@testset "read write access token to cache" begin
+    access_token = AccessToken("abc_token", "run:transaction", 3600, datetime2unix(DateTime("2022-08-12T17:49:51.365")))
+    creds = ClientCredentials("client_id", "xyz_client_secret", "https://login.relationalai.com/oauth/token")
+    creds.access_token = access_token
+
+    # write/read access token to cache
+    _write_token_cache(creds)
+    cached_token = _read_token_cache(creds)
+
+    # check if access token is serialized/de-serialized correctly from the cache
+    @test cached_token === access_token
 end
