@@ -186,6 +186,7 @@ with_engine(CTX) do engine_name
             @testset "exec_async" begin
                 query_string = "x, x^2, x^3, x^4 from x in {1; 2; 3; 4; 5}"
                 resp = exec_async(CTX, database_name, engine_name, query_string)
+                resp = wait_until_done(CTX, resp)
                 txn = resp.transaction
 
                 @test txn[:state] == "COMPLETED"
