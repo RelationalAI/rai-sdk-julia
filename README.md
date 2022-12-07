@@ -4,7 +4,9 @@ The RelationalAI (RAI) SDK for Julia enables developers to access the RAI REST A
 
 * You can find RelationalAI Julia SDK documentation at <https://docs.relational.ai/rkgms/sdk/julia-sdk> 
 * You can find RelationalAI product documentation at <https://docs.relational.ai> 
-* You can learn more about RelationalAI at <https://relational.ai> ## Getting started
+* You can learn more about RelationalAI at <https://relational.ai> 
+
+## Getting started
 
 ### Installation
 
