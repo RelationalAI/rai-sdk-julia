@@ -20,7 +20,8 @@ jobs:
         version:
           - '1.6'
           - '1.7'
-          - 'nightly'
+          - '1.8'
+          - '^1.9.0-0'
         os:
           - ubuntu-latest
           - macOS-latest
@@ -29,15 +30,8 @@ jobs:
           - x64
     steps:
       - uses: actions/checkout@v3
-      - uses: julia-actions/setup-julia@v1
+      - uses: ./.github/actions/test
         with:
-          version: ${{ matrix.version }}
-          arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v1
-      - uses: julia-actions/julia-buildpkg@v1
-      - name: Test
-        env:
-          CLIENT_ID: ${{ secrets.CLIENT_ID }}
-          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
-          CLIENT_CREDENTIALS_URL: ${{ secrets.CLIENT_CREDENTIALS_URL }}
-        uses: julia-actions/julia-runtest@v1
+          client_id: ${{ secrets.CLIENT_ID }}
+          client_secret: ${{ secrets.CLIENT_SECRET }}
+          client_credentials_url: ${{ secrets.CLIENT_CREDENTIALS_URL }}
