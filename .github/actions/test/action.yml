@@ -23,6 +23,16 @@ inputs:
     required: false
     description: 'Optional http headers'
     default: '{}'
+  
+  julia_version:
+    required: false
+    description: 'Julia version to test with'
+    default: '1.8'
+
+  arch:
+    required: false
+    description: 'Platform architecture'
+    default: 'x64'
 
 runs:
   using: 'composite'
@@ -33,7 +43,8 @@ runs:
 
     - uses: julia-actions/setup-julia@v1
       with:
-        version: 1.8
+        version: ${{ matrix.version || inputs.julia_version }}
+        arch: ${{ matrix.arch || inputs.arch }}
     - uses: julia-actions/cache@v1
     - uses: julia-actions/julia-buildpkg@v1
 
