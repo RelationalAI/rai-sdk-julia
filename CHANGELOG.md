@@ -1,5 +1,17 @@
 # Changelog
 
+## main
+
+## v0.2.2
+* Add timeout/keep-alive options for access token
+* Add custom engine version support for integration tests
+* Update models actions to use v2 protocol
+* Update `load_model` to `load_models`
+* Add `cancel_transaction` 
+
+## v0.2.1
+* Increased `connection_limit` to 4096
+
 ## v0.2.0
 * Deprecate metadata JSON format.
 * Add support to deserialize ProtoBuf metadata.

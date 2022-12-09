@@ -234,11 +234,8 @@ function delete_engine(ctx::Context, engine::AbstractString; kw...)
     return _delete(ctx, PATH_ENGINE; body = JSON3.write(data), kw...)
 end
 
-function delete_model(ctx::Context, database::AbstractString, engine::AbstractString, model::AbstractString; kw...)
-    tx = Transaction(ctx.region, database, engine, "OPEN"; readonly = false)
-    actions = [_make_delete_models_action([model])]
-    return _post(ctx, PATH_TRANSACTION; query = query(tx), body = body(tx, actions...), kw...)
-end
+# escape rel special string
+_escape_string_for_rel(str) = replace(repr(str), '%' => "\\%")
 
 function delete_oauth_client(ctx::Context, id::AbstractString; kw...)
     return _delete(ctx, joinpath(PATH_OAUTH_CLIENTS, id); kw...)
@@ -268,15 +265,6 @@ function get_database(ctx::Context, database::AbstractString; kw...)
     rsp = _get(ctx, PATH_DATABASE; query = query, kw...).databases
     length(rsp) == 0 && throw(HTTPError(404))
     return rsp[1]
-end
-
-# todo: move to rel query
-function get_model(ctx::Context, database::AbstractString, engine::AbstractString, name::AbstractString; kw...)
-    models = _list_models(ctx, database, engine; kw...)
-    for model in models
-        model["name"] == name && return model["value"]
-    end
-    throw(HTTPError(404))
 end
 
 function get_oauth_client(ctx::Context, id::AbstractString; kw...)
@@ -385,22 +373,6 @@ function _make_actions(actions...)
         push!(result, item)
     end
     return result
-end
-
-function _make_delete_models_action(models::Vector)
-    return Dict(
-        "type" => "ModifyWorkspaceAction",
-        "delete_source" => models)
-end
-
-function _make_load_model_action(name, model)
-    return Dict(
-        "type" => "InstallAction",
-        "sources" => [_make_query_source(name, model)])
-end
-
-function _make_list_models_action()
-    return Dict("type" => "ListSourceAction")
 end
 
 function _make_list_edb_action()
@@ -648,6 +620,11 @@ function get_transaction_results(ctx::Context, id::AbstractString; kw...)
     return _parse_multipart_results_response(rsp)
 end
 
+function cancel_transaction(ctx::Context, id::AbstractString; kw...)
+    path = PATH_ASYNC_TRANSACTIONS * "/$id/cancel"
+    return _post(ctx, path)
+end
+
 function _parse_multipart_fastpath_sync_response(msg)
     # TODO: in-place conversion to Arrow without copying the bytes.
     #   ... HTTP.parse_multipart_form() copies the bytes into IOBuffers.
@@ -688,19 +665,6 @@ function list_edbs(ctx::Context, database::AbstractString, engine::AbstractStrin
     rsp = _post(ctx, PATH_TRANSACTION; query = query(tx), body = data, kw...)
     length(rsp.actions) == 0 && return []
     return rsp.actions[1].result.rels
-end
-
-function _list_models(ctx::Context, database::AbstractString, engine::AbstractString; kw...)
-    tx = Transaction(ctx.region, database, engine, "OPEN"; readonly = true)
-    data = body(tx, _make_list_models_action())
-    rsp = _post(ctx, PATH_TRANSACTION; query = query(tx), body = data, kw...).actions
-    length(rsp) == 0 && return []
-    return rsp[1].result.sources
-end
-
-function list_models(ctx::Context, database::AbstractString, engine::AbstractString; kw...)
-    models = _list_models(ctx, database, engine; kw...)
-    return [model["name"] for model in models]
 end
 
 function _gen_literal(value)
@@ -772,13 +736,82 @@ function load_json(ctx::Context, database::AbstractString, engine::AbstractStrin
     return exec(ctx, database, engine, source; inputs = inputs, readonly = false, kw...)
 end
 
-function load_model(ctx::Context, database::AbstractString, engine::AbstractString, models::Dict; kw...)
-    tx = Transaction(ctx.region, database, engine, "OPEN"; readonly = false)
-    actions = [_make_load_model_action(name, model) for (name, model) in models]
-    return _post(ctx, PATH_TRANSACTION; query = query(tx), body = body(tx, actions...), kw...)
+function load_models(ctx::Context, database::AbstractString, engine::AbstractString, models::Dict; kw...)
+    queries = []
+    queries_inputs = Dict()
+    rand_uint = rand(UInt64)
+
+    index = 0
+    for (name, value) in models
+        input_name = string("input_", rand_uint, "_", index)
+        push!(queries, """
+            def delete:rel:catalog:model["$name"] = rel:catalog:model["$name"]
+            def insert:rel:catalog:model["$name"] = $input_name
+        """)
+
+        queries_inputs[input_name] = value
+        index+=1
+    end
+
+    return exec(ctx, database, engine, join(queries, "\n"); inputs = queries_inputs, readonly = false, kw...)
 end
 
+function load_models_async(ctx::Context, database::AbstractString, engine::AbstractString, models::Dict; kw...)
+    queries = []
+    queries_inputs = Dict()
+    rand_uint = rand(UInt64)
 
+    index = 0
+    for (name, value) in models
+        input_name = string("input_", rand_uint, "_", index)
+        push!(queries, """
+            def delete:rel:catalog:model["$name"] = rel:catalog:model["$name"]
+            def insert:rel:catalog:model["$name"] = $input_name
+        """)
+
+        queries_inputs[input_name] = value
+        index+=1
+    end
+
+    return exec_async(ctx, database, engine, join(queries, "\n"); inputs = queries_inputs, readonly = false, kw...)
+end
+
+function list_models(ctx::Context, database::AbstractString, engine::AbstractString; kw...)
+    out_name = "model$(rand(UInt64))"
+    query = """ def output:$out_name[name] = rel:catalog:model(name, _) """
+    resp = exec(ctx, database, engine, query)
+    for result in resp.results
+        if occursin("/:output/:$out_name", result.first)
+            return [name for name in result.second.v1]
+        end
+    end
+end
+
+function get_model(ctx::Context, database::AbstractString, engine::AbstractString, name::AbstractString; kw...)
+    out_name = "model$(rand(UInt64))"
+    query = """def output:$out_name = rel:catalog:model[$(_escape_string_for_rel(name))]"""
+    resp = exec(ctx, database, engine, query)
+    for result in resp.results
+        if occursin("/:output/:$out_name", result.first)
+            return first(result.second.v1)
+        end
+    end
+    throw(HTTPError(404))
+end
+
+function delete_models(ctx::Context, database::AbstractString, engine::AbstractString, models::Vector{String}; kw...)
+    queries = ["""
+            def delete:rel:catalog:model[$(_escape_string_for_rel(model))] = rel:catalog:model[$(_escape_string_for_rel(model))]
+        """ for model in models]
+    return exec(ctx, database, engine, join(queries, "\n"); readonly=false, kw...)
+end
+
+function delete_models_async(ctx::Context, database::AbstractString, engine::AbstractString, model::AbstractString; kw...)
+    queries = ["""
+            def delete:rel:catalog:model[$(_escape_string_for_rel(model))] = rel:catalog:model[$(_escape_string_for_rel(model))
+        """ for model in models]
+    return exec_async(ctx, database, engine, join(queries, "\n"); readonly=false, kw...)
+end
 
 # --- utils -------------------------
 # Patch for older versions of HTTP package that don't support parsing multipart responses:

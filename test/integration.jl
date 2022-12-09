@@ -1,8 +1,10 @@
 using Test
 using RAI
+using ArgParse
 using RAI: transaction_id, _poll_with_specified_overhead
 
 import UUIDs
+
 
 # -----------------------------------
 # context & setup
@@ -36,9 +38,13 @@ function test_context(profile_name = nothing)
     client_secret = ENV["CLIENT_SECRET"]
     client_credentials_urls = ENV["CLIENT_CREDENTIALS_URL"]
     audience = get(ENV, "CLIENT_AUDIENCE", nothing)
+    rai_host = get(ENV, "HOST", nothing)
+    if isnothing(rai_host)
+        rai_host = "azure.relationalai.com"
+    end
 
     credentials = ClientCredentials(client_id, client_secret, client_credentials_urls)
-    config = Config("us-east", "https", "azure.relationalai.com", "443", credentials, audience)
+    config = Config("us-east", "https", rai_host, "443", credentials, audience)
 
     return Context(config)
 end
@@ -50,8 +56,16 @@ rnd_test_name() = "julia-sdk-" * string(UUIDs.uuid4())
 function with_engine(f, ctx; existing_engine=nothing)
     engine_name = rnd_test_name()
     if isnothing(existing_engine)
+        custom_headers = get(ENV, "CUSTOM_HEADERS", nothing)
         start_time_ns = time_ns()
-        create_engine(ctx, engine_name)
+        if isnothing(custom_headers)
+            create_engine(ctx, engine_name)
+        else
+            # custom headers should be passed as a JSON string
+            # otherwise a runtime exception will be thrown
+            headers = JSON3.read(custom_headers, Dict{String, String})
+            create_engine(ctx, engine_name; nothing, headers)
+        end
         _poll_with_specified_overhead(; POLLING_KWARGS..., start_time_ns) do
             get_engine(ctx, engine_name)[:state] == "PROVISIONED"
         end
@@ -172,6 +186,7 @@ with_engine(CTX) do engine_name
             @testset "exec_async" begin
                 query_string = "x, x^2, x^3, x^4 from x in {1; 2; 3; 4; 5}"
                 resp = exec_async(CTX, database_name, engine_name, query_string)
+                resp = wait_until_done(CTX, resp)
                 txn = resp.transaction
 
                 @test txn[:state] == "COMPLETED"
@@ -278,7 +293,72 @@ with_engine(CTX) do engine_name
 
         # -----------------------------------
         # models
-        @testset "models" begin end
+        @testset "models" begin
+            models = list_models(CTX, database_name, engine_name)
+            @test length(models) > 0
+
+            models = Dict("test_model" => "def foo = :bar")
+            resp = load_models(CTX, database_name, engine_name, models)
+            @test resp.transaction.state == "COMPLETED"
+
+            value = get_model(CTX, database_name, engine_name, "test_model")
+            @test models["test_model"] == value
+
+            models = list_models(CTX, database_name, engine_name)
+            @test "test_model" in models
+
+            resp = delete_models(CTX, database_name, engine_name, ["test_model"])
+            @test resp.transaction.state == "COMPLETED"
+            @test length(resp.problems) == 0
+
+            models = list_models(CTX, database_name, engine_name)
+            @test !("test_model" in models)
+
+            # test escape special rel character
+            models = Dict("percent" => "def foo = \"98%\"")
+            resp = load_models(CTX, database_name, engine_name, models)
+            @test resp.transaction.state == "COMPLETED"
+            @test length(resp.problems) > 0
+            resp = delete_models(CTX, database_name, engine_name, ["percent"])
+            @test resp.transaction.state == "COMPLETED"
+            @test length(resp.problems) == 0
+
+            models = Dict("percent" => "def foo = \"98\\%\"")
+            resp = load_models(CTX, database_name, engine_name, models)
+            @test resp.transaction.state == "COMPLETED"
+            @test length(resp.problems) == 0
+            value = get_model(CTX, database_name, engine_name, "percent")
+            @test models["percent"] == value
+
+            models = list_models(CTX, database_name, engine_name)
+            @test "percent" in models
+
+            resp = delete_models(CTX, database_name, engine_name, ["percent"])
+            @test resp.transaction.state == "COMPLETED"
+            @test length(resp.problems) == 0
+
+            models = list_models(CTX, database_name, engine_name)
+            @test !("percent" in models)
+
+            # test escape """
+            models = Dict("triple_quoted" => "def foo = \"\"\"98\\%\"\"\" ")
+            resp = load_models(CTX, database_name, engine_name, models)
+            @test resp.transaction.state == "COMPLETED"
+            @test length(resp.problems) == 0
+            value = get_model(CTX, database_name, engine_name, "triple_quoted")
+            @test models["triple_quoted"] == value
+
+            models = list_models(CTX, database_name, engine_name)
+            @test "triple_quoted" in models
+            @test length(resp.problems) == 0
+
+            resp = delete_models(CTX, database_name, engine_name, ["triple_quoted"])
+            @test resp.transaction.state == "COMPLETED"
+            @test length(resp.problems) == 0
+
+            models = list_models(CTX, database_name, engine_name)
+            @test !("triple_quoted" in models)
+        end
     end
 end
 

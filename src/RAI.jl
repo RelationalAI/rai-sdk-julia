@@ -46,10 +46,10 @@ export
     list_engines
 
 export
-    delete_model,
+    delete_models,
     get_model,
     list_models,
-    load_model
+    load_models
 
 export
     create_oauth_client,
@@ -66,7 +66,7 @@ export
     update_user
 
 export
-    delete_model,
+    delete_models,
     get_model,
     list_models
 
