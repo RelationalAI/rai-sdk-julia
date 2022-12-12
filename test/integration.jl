@@ -67,7 +67,8 @@ function with_engine(f, ctx; existing_engine=nothing)
             create_engine(ctx, engine_name; nothing, headers)
         end
         _poll_with_specified_overhead(; POLLING_KWARGS..., start_time_ns) do
-            get_engine(ctx, engine_name)[:state] == "PROVISIONED"
+            state = get_engine(ctx, engine_name)[:state]
+            state == "PROVISIONED" || state == "PROVISION_FAILED"
         end
     else
         engine_name = existing_engine
@@ -80,7 +81,8 @@ function with_engine(f, ctx; existing_engine=nothing)
         if isnothing(existing_engine)
             start_time_ns = time_ns() - 2e9  # assume we started 2 seconds ago
             _poll_with_specified_overhead(; POLLING_KWARGS..., start_time_ns) do
-                get_engine(ctx, engine_name)[:state] == "PROVISIONED"
+                state = get_engine(ctx, engine_name)[:state]
+                state == "PROVISIONED" || state == "PROVISION_FAILED"
             end
             delete_engine(ctx, engine_name)
         end
@@ -90,13 +92,14 @@ end
 # Creates a database and executes `f` with the name of the created database.  Deletes the
 # database when finished. An already existing database can be supplied to improve local
 # iteration times.
-function with_database(f, ctx, engine_name; existing_database=nothing)
+function with_database(f, ctx; existing_database=nothing)
+    dbname = rnd_test_name()
     isnothing(existing_database) &&
-        create_database(ctx, engine_name, engine_name; overwrite=true)
+        create_database(ctx, dbname)
     try
-        f(engine_name)
+        f(dbname)
     finally
-        isnothing(existing_database) && delete_database(ctx, engine_name)
+        isnothing(existing_database) && delete_database(ctx, dbname)
     end
 end
 
@@ -143,7 +146,7 @@ end
 # transactions
 
 with_engine(CTX) do engine_name
-    with_database(CTX, engine_name) do database_name
+    with_database(CTX) do database_name
 
         # -----------------------------------
         # execution
