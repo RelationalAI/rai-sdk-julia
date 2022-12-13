@@ -68,7 +68,8 @@ function with_engine(f, ctx; existing_engine=nothing)
         end
         _poll_with_specified_overhead(; POLLING_KWARGS..., start_time_ns) do
             state = get_engine(ctx, engine_name)[:state]
-            state == "PROVISIONED" || state == "PROVISION_FAILED"
+            state == "PROVISION_FAILED" && throw("Failed to provision engine $engine_name")
+            state == "PROVISIONED"
         end
     else
         engine_name = existing_engine
@@ -82,7 +83,8 @@ function with_engine(f, ctx; existing_engine=nothing)
             start_time_ns = time_ns() - 2e9  # assume we started 2 seconds ago
             _poll_with_specified_overhead(; POLLING_KWARGS..., start_time_ns) do
                 state = get_engine(ctx, engine_name)[:state]
-                state == "PROVISIONED" || state == "PROVISION_FAILED"
+                state == "PROVISION_FAILED" && throw("Failed to provision engine $engine_name")
+                state == "PROVISIONED"
             end
             delete_engine(ctx, engine_name)
         end
