@@ -55,8 +55,10 @@ rnd_test_name() = "julia-sdk-" * string(UUIDs.uuid4())
 # finished. An already existing engine can be supplied to improve local iteration times.
 function with_engine(f, ctx; existing_engine=nothing)
     engine_name = rnd_test_name()
+    @info "using engine $engine_name"
     if isnothing(existing_engine)
         custom_headers = get(ENV, "CUSTOM_HEADERS", nothing)
+        custom_headers !== nothing && @info "using custom headers $custom_headers"
         start_time_ns = time_ns()
         if isnothing(custom_headers)
             create_engine(ctx, engine_name)
@@ -96,6 +98,7 @@ end
 # iteration times.
 function with_database(f, ctx; existing_database=nothing)
     dbname = rnd_test_name()
+    @info "using database $dbname"
     isnothing(existing_database) &&
         create_database(ctx, dbname)
     try
