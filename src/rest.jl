@@ -175,7 +175,7 @@ function _authenticate!(
     return nothing
 end
 
-# Note, this function is deliberately patterend on the HTTP.jl request funciton.
+# Note, this function is deliberately patterend on the HTTP.jl request function.
 function request(
     ctx::Context, method, url, h = HTTP.Header[], b = UInt8[];
     headers = h, query = nothing, body = b, kw...
@@ -184,5 +184,11 @@ function request(
     headers = _ensure_headers!(headers)
     _authenticate!(ctx, headers)
     opts = (;redirect = false, connection_limit = 4096)
-    return HTTP.request(method, url, headers; query = query, body = body, opts..., kw...)
+    rsp = HTTP.request(method, url, headers; query = query, body = body, opts..., kw...)
+    if rsp.status >= 400
+        @warn rsp
+        request_id = HTTP.header(rsp, "X-Request-Id")
+        throw(HTTPError(rsp.status, "x-request-id: $request_id\n$(String(rsp.body))"))
+    end
+    return rsp
 end
