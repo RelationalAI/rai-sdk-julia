@@ -137,7 +137,10 @@ function _poll_with_specified_overhead(
     local iter
     for i in 1:n
         iter = i
-        if f()
+        @debug "polling: sending request"
+        done = f()
+        @debug "polling: request complete" done
+        if done
             return nothing
         end
         current_delay = time_ns() - start_time_ns
