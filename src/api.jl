@@ -78,8 +78,7 @@ function wait_until_done(ctx::Context, txn::JSON3.Object; start_time_ns = nothin
     wait_until_done(ctx, transaction_id(txn); start_time_ns)
 end
 function _transaction_start_time_ns(txn::JSON3.Object)
-    unix_ms = txn[:created_on] ÷ 1000
-    Dates.unix2datetime(unix_ms)
+    return txn[:created_on] ÷ 1_000_000_000
 end
 function wait_until_done(ctx::Context, id::AbstractString; start_time_ns = nothing)
     # If the user is calling this manually, read the start time from the transaction object.
