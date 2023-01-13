@@ -508,8 +508,8 @@ julia> exec(ctx, "my_database", "my_engine", "2 + 2")
 Dict{String, Any} with 4 entries:
   "metadata"    => Union{}[]
   "problems"    => Union{}[]
-  "results"     => Pair{String, Arrow.Table}["/:output/Int64"=>Arrow.Table with 1 r???
-  "transaction" => {???
+  "results"     => Pair{String, Arrow.Table}["/:output/Int64"=>Arrow.Table with 1 r…
+  "transaction" => {…
 
 julia> exec(ctx, "my_database", "my_engine", \"""
            def insert:my_relation = 1, 2, 3
@@ -520,7 +520,7 @@ Dict{String, Any} with 4 entries:
   "metadata"    => Union{}[]
   "problems"    => Union{}[]
   "results"     => Any[]
-  "transaction" => {???
+  "transaction" => {…
 ```
 """
 function exec(ctx::Context, database::AbstractString, engine::AbstractString, source; inputs = nothing, readonly = false, kw...)
