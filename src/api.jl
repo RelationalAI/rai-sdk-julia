@@ -35,6 +35,8 @@ const PATH_ASYNC_TRANSACTIONS = "/transactions"
 const PATH_USERS = "/users"
 const ARROW_CONTENT_TYPE = "application/vnd.apache.arrow.stream"
 
+const TXN_POLLING_OVERHEAD = 0.10
+
 struct HTTPError <: Exception
     status_code::Int
     status_text::String
@@ -107,7 +109,7 @@ function wait_until_done(ctx::Context, id::AbstractString;
         start_time = _transaction_start_time(txn)
     end
     try
-        _poll_with_specified_overhead(; overhead_rate = 0.10, start_time) do
+        _poll_with_specified_overhead(; overhead_rate = TXN_POLLING_OVERHEAD, start_time) do
             txn = get_transaction(ctx, id)
             return transaction_is_done(txn)
         end
@@ -151,6 +153,7 @@ function _poll_with_specified_overhead(
     timeout_secs = Inf,  # no timeout by default
     throw_on_timeout = false,
 )
+    @debug "start time: $start_time"
     @assert overhead_rate >= 0.0
     local iter
     for i in 1:n
@@ -161,13 +164,15 @@ function _poll_with_specified_overhead(
         if done
             return nothing
         end
-        current_delay_s = time() - start_time
+        t = @mock(time())
+        @debug "time: $t"
+        current_delay_s = t - start_time
         if current_delay_s > timeout_secs
             break
         end
         duration = current_delay_s * overhead_rate
         duration = min(duration, max_delay)  # clamp the duration as specified.
-        sleep(duration)
+        @mock sleep(duration)
     end
 
     # We have exhausted the iterator.
