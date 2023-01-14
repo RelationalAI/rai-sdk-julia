@@ -65,29 +65,49 @@ finished. A transaction has finished once it has reached one of the terminal sta
 `COMPLETED` or `ABORTED`. The polling uses a low-overhead exponential backoff in order to
 ensure low-latency results without overloading network traffic.
 """
-function wait_until_done(ctx::Context, rsp::TransactionResponse; start_time_ns = nothing)
-    wait_until_done(ctx, rsp.transaction; start_time_ns)
+function wait_until_done(ctx::Context, rsp::TransactionResponse;
+    start_time_ns = nothing,  # deprecated
+    start_time = nothing,
+)
+    wait_until_done(ctx, rsp.transaction; start_time_ns, start_time)
 end
-function wait_until_done(ctx::Context, txn::JSON3.Object; start_time_ns = nothing)
+function wait_until_done(ctx::Context, txn::JSON3.Object;
+    start_time_ns = nothing,  # deprecated
+    start_time = nothing,
+)
+    if start_time_ns !== nothing
+        start_time = start_time_ns / 1e9,
+        @warn "wait_until_done(): start_time_ns= is deprecated; please pass start_time= as a unix timestamp instead."
+    end
+
     # If the user is calling this manually, read the start time from the transaction object.
-    if start_time_ns === nothing &&
+    if start_time === nothing &&
             # NOTE: the fast-path txn may not include the created_on key.
             haskey(txn, :created_on)
-        start_time_ns = _transaction_start_time_ns(txn)
+        start_time = _transaction_start_time(txn)
     end
-    wait_until_done(ctx, transaction_id(txn); start_time_ns)
+    wait_until_done(ctx, transaction_id(txn); start_time)
 end
-function _transaction_start_time_ns(txn::JSON3.Object)
-    return txn[:created_on] ÷ 1_000_000_000
+function _transaction_start_time(txn::JSON3.Object)
+    # The API returns *milliseconds* since the epoch
+    return txn[:created_on] / 1e3
 end
-function wait_until_done(ctx::Context, id::AbstractString; start_time_ns = nothing)
+function wait_until_done(ctx::Context, id::AbstractString;
+    start_time_ns = nothing,  # deprecated
+    start_time = nothing,
+)
+    if start_time_ns !== nothing
+        start_time = start_time_ns / 1e9,
+        @warn "wait_until_done(): start_time_ns= is deprecated; please pass start_time= as a unix timestamp instead."
+    end
+
     # If the user is calling this manually, read the start time from the transaction object.
-    if start_time_ns === nothing
+    if start_time === nothing
         txn = get_transaction(ctx, id)
-        start_time_ns = _transaction_start_time_ns(txn)
+        start_time = _transaction_start_time(txn)
     end
     try
-        _poll_with_specified_overhead(; overhead_rate = 0.10, start_time_ns) do
+        _poll_with_specified_overhead(; overhead_rate = 0.10, start_time) do
             txn = get_transaction(ctx, id)
             return transaction_is_done(txn)
         end
@@ -125,14 +145,13 @@ end
 function _poll_with_specified_overhead(
     f;
     overhead_rate,  # Add xx% overhead through polling.
-    start_time_ns = time_ns(),  # Optional start time, otherwise defaults to now()
+    start_time = time(),  # Optional start time, otherwise defaults to now()
     n = typemax(Int), # Maximum number of polls
     max_delay = 120, # 2 min
     timeout_secs = Inf,  # no timeout by default
     throw_on_timeout = false,
 )
     @assert overhead_rate >= 0.0
-    timeout_ns = timeout_secs * 1e9
     local iter
     for i in 1:n
         iter = i
@@ -142,17 +161,17 @@ function _poll_with_specified_overhead(
         if done
             return nothing
         end
-        current_delay = time_ns() - start_time_ns
-        if current_delay > timeout_ns
+        current_delay_s = time() - start_time
+        if current_delay_s > timeout_secs
             break
         end
-        duration = (current_delay * overhead_rate) / 1e9
+        duration = current_delay_s * overhead_rate
         duration = min(duration, max_delay)  # clamp the duration as specified.
         sleep(duration)
     end
 
     # We have exhausted the iterator.
-    current_delay_secs = (time_ns() - start_time_ns) * 1e9
+    current_delay_secs = time() - start_time
     throw_on_timeout && error("Timed out after $iter iterations, $current_delay_secs seconds in `_poll_with_specified_overhead`.")
 
     return nothing
@@ -526,14 +545,14 @@ Dict{String, Any} with 4 entries:
 function exec(ctx::Context, database::AbstractString, engine::AbstractString, source; inputs = nothing, readonly = false, kw...)
     # Record the initial start time so that we include the time to create the transaction
     # in our exponential backoff in `wait_until_done()`.
-    start_time_ns = time_ns()
+    start_time = time()
     # Create an Async transaction:
     transactionResponse = exec_async(ctx, database, engine, source; inputs=inputs, readonly=readonly, kw...)
     if transactionResponse.results !== nothing
         return transactionResponse
     end
     # Poll until the transaction is done, and return the results.
-    return wait_until_done(ctx, transactionResponse; start_time_ns = start_time_ns)
+    return wait_until_done(ctx, transactionResponse; start_time = start_time)
 end
 
 function exec_async(ctx::Context, database::AbstractString, engine::AbstractString, source; inputs = nothing, readonly = false, kw...)
