@@ -124,6 +124,8 @@ with_engine(CTX) do engine_name
         # TODO: https://github.com/RelationalAI/relationalai-infra/issues/2542
         # In order to clone from a database, you currently need to "touch" it, to materialize
         # it. Remove this once that is fixed.
+        _ = exec(CTX, dbname, engine_name, "")
+
         dbname_clone = "$dbname-clone"
         rsp = create_database(CTX, dbname_clone, source=dbname)
         @test rsp.database.name == dbname_clone
