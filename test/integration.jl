@@ -57,7 +57,7 @@ function with_engine(f, ctx; existing_engine=nothing)
     engine_name = rnd_test_name()
     if isnothing(existing_engine)
         custom_headers = get(ENV, "CUSTOM_HEADERS", nothing)
-        start_time_ns = time_ns()
+        start_time = time()
         if isnothing(custom_headers)
             create_engine(ctx, engine_name)
         else
@@ -66,7 +66,7 @@ function with_engine(f, ctx; existing_engine=nothing)
             headers = JSON3.read(custom_headers, Dict{String, String})
             create_engine(ctx, engine_name; nothing, headers)
         end
-        _poll_with_specified_overhead(; POLLING_KWARGS..., start_time_ns) do
+        _poll_with_specified_overhead(; POLLING_KWARGS..., start_time) do
             state = get_engine(ctx, engine_name)[:state]
             state == "PROVISION_FAILED" && throw("Failed to provision engine $engine_name")
             state == "PROVISIONED"
@@ -80,8 +80,8 @@ function with_engine(f, ctx; existing_engine=nothing)
         # Engines cannot be deleted if they are still provisioning. We have to at least wait
         # until they are ready.
         if isnothing(existing_engine)
-            start_time_ns = time_ns() - 2e9  # assume we started 2 seconds ago
-            _poll_with_specified_overhead(; POLLING_KWARGS..., start_time_ns) do
+            start_time = time() - 2  # assume we started 2 seconds ago
+            _poll_with_specified_overhead(; POLLING_KWARGS..., start_time) do
                 state = get_engine(ctx, engine_name)[:state]
                 state == "PROVISION_FAILED" && throw("Failed to provision engine $engine_name")
                 state == "PROVISIONED"
