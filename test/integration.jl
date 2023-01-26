@@ -57,7 +57,7 @@ function with_engine(f, ctx; existing_engine=nothing)
     engine_name = rnd_test_name()
     if isnothing(existing_engine)
         custom_headers = get(ENV, "CUSTOM_HEADERS", nothing)
-        start_time_ns = time_ns()
+        start_time = time()
         if isnothing(custom_headers)
             create_engine(ctx, engine_name)
         else
@@ -66,8 +66,10 @@ function with_engine(f, ctx; existing_engine=nothing)
             headers = JSON3.read(custom_headers, Dict{String, String})
             create_engine(ctx, engine_name; nothing, headers)
         end
-        _poll_with_specified_overhead(; POLLING_KWARGS..., start_time_ns) do
-            get_engine(ctx, engine_name)[:state] == "PROVISIONED"
+        _poll_with_specified_overhead(; POLLING_KWARGS..., start_time) do
+            state = get_engine(ctx, engine_name)[:state]
+            state == "PROVISION_FAILED" && throw("Failed to provision engine $engine_name")
+            state == "PROVISIONED"
         end
     else
         engine_name = existing_engine
@@ -78,9 +80,11 @@ function with_engine(f, ctx; existing_engine=nothing)
         # Engines cannot be deleted if they are still provisioning. We have to at least wait
         # until they are ready.
         if isnothing(existing_engine)
-            start_time_ns = time_ns() - 2e9  # assume we started 2 seconds ago
-            _poll_with_specified_overhead(; POLLING_KWARGS..., start_time_ns) do
-                get_engine(ctx, engine_name)[:state] == "PROVISIONED"
+            start_time = time() - 2  # assume we started 2 seconds ago
+            _poll_with_specified_overhead(; POLLING_KWARGS..., start_time) do
+                state = get_engine(ctx, engine_name)[:state]
+                state == "PROVISION_FAILED" && throw("Failed to provision engine $engine_name")
+                state == "PROVISIONED"
             end
             delete_engine(ctx, engine_name)
         end
@@ -90,13 +94,14 @@ end
 # Creates a database and executes `f` with the name of the created database.  Deletes the
 # database when finished. An already existing database can be supplied to improve local
 # iteration times.
-function with_database(f, ctx, engine_name; existing_database=nothing)
+function with_database(f, ctx; existing_database=nothing)
+    dbname = rnd_test_name()
     isnothing(existing_database) &&
-        create_database(ctx, engine_name, engine_name; overwrite=true)
+        create_database(ctx, dbname)
     try
-        f(engine_name)
+        f(dbname)
     finally
-        isnothing(existing_database) && delete_database(ctx, engine_name)
+        isnothing(existing_database) && delete_database(ctx, dbname)
     end
 end
 
@@ -106,38 +111,6 @@ const CTX = test_context()
 # -----------------------------------
 # engine
 @testset "engine" begin end
-
-# -----------------------------------
-# database
-@testset "database" begin
-    dbname = rnd_test_name()
-    rsp = create_database(CTX, dbname)
-    @test rsp.database.name == dbname
-    @test rsp.database.state == "CREATED"
-
-    # TODO: https://github.com/RelationalAI/relationalai-infra/issues/2542
-    # In order to clone from a database, you currently need to "touch" it, to materialize
-    # it. Remove this once that is fixed.
-    with_engine(CTX) do engine_name
-        _ = exec(CTX, dbname, engine_name, "")
-    end
-
-    dbname_clone = "$dbname-clone"
-    rsp = create_database(CTX, dbname_clone, source=dbname)
-    @test rsp.database.name == dbname_clone
-    @test rsp.database.state == "CREATED"
-
-    # Already exists
-    @test_throws RAI.HTTPError create_database(CTX, dbname_clone)
-    @test_throws RAI.HTTPError create_database(CTX, dbname_clone, source=dbname)
-
-    rsp = delete_database(CTX, dbname)
-    @test rsp.name == dbname
-    @test delete_database(CTX, dbname_clone).name == dbname_clone
-
-    # Doesn't exists
-    @test_throws RAI.HTTPError delete_database(CTX, dbname)
-end
 
 # -----------------------------------
 # suspend and resume
@@ -157,12 +130,39 @@ with_engine(CTX) do engine_name
     end
 end
 
-
-# -----------------------------------
-# transactions
-
 with_engine(CTX) do engine_name
-    with_database(CTX, engine_name) do database_name
+    # -----------------------------------
+    # database
+    @testset "database" begin
+        dbname = rnd_test_name()
+        rsp = create_database(CTX, dbname)
+        @test rsp.database.name == dbname
+        @test rsp.database.state == "CREATED"
+
+        # TODO: https://github.com/RelationalAI/relationalai-infra/issues/2542
+        # In order to clone from a database, you currently need to "touch" it, to materialize
+        # it. Remove this once that is fixed.
+        _ = exec(CTX, dbname, engine_name, "")
+
+        dbname_clone = "$dbname-clone"
+        rsp = create_database(CTX, dbname_clone, source=dbname)
+        @test rsp.database.name == dbname_clone
+        @test rsp.database.state == "CREATED"
+
+        # Already exists
+        @test_throws RAI.HTTPError create_database(CTX, dbname_clone)
+        @test_throws RAI.HTTPError create_database(CTX, dbname_clone, source=dbname)
+
+        rsp = delete_database(CTX, dbname)
+        @test rsp.name == dbname
+        @test delete_database(CTX, dbname_clone).name == dbname_clone
+
+        # Doesn't exists
+        @test_throws RAI.HTTPError delete_database(CTX, dbname)
+    end
+    # -----------------------------------
+    # transactions
+    with_database(CTX) do database_name
 
         # -----------------------------------
         # execution
@@ -205,6 +205,7 @@ with_engine(CTX) do engine_name
             @testset "exec_async" begin
                 query_string = "x, x^2, x^3, x^4 from x in {1; 2; 3; 4; 5}"
                 resp = exec_async(CTX, database_name, engine_name, query_string)
+                resp = wait_until_done(CTX, resp)
                 txn = resp.transaction
 
                 @test txn[:state] == "COMPLETED"

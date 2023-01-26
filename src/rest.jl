@@ -62,7 +62,8 @@ function _user_agent()
 end
 
 # Ensures that the given headers contain the required values.
-function _ensure_headers!(h = HTTP.Headers())
+function _ensure_headers(headers=nothing)
+    h = isnothing(headers) ? HTTP.Headers() : copy(headers)
     _haskeyfold(h, "accept") || push!(h, "Accept" => "application/json")
     _haskeyfold(h, "content-type") || push!(h, "Content-Type" => "application/json")
     _haskeyfold(h, "user-agent") || push!(h, "User-Agent" => _user_agent())
@@ -71,7 +72,7 @@ end
 
 function get_access_token(ctx::Context, creds::ClientCredentials)::AccessToken
     url = _get_client_credentials_url(creds)
-    h = _ensure_headers!()
+    h = _ensure_headers()
     body = """{
         "client_id": $(repr(creds.client_id)),
         "client_secret": $(repr(creds.client_secret)),
@@ -181,7 +182,7 @@ function request(
     headers = h, query = nothing, body = b, kw...
 )::HTTP.Response
     isnothing(body) && (body = UInt8[])
-    headers = _ensure_headers!(headers)
+    headers = _ensure_headers(headers)
     _authenticate!(ctx, headers)
     opts = (;redirect = false, connection_limit = 4096)
     return HTTP.request(method, url, headers; query = query, body = body, opts..., kw...)
