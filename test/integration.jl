@@ -55,6 +55,7 @@ rnd_test_name() = "julia-sdk-" * string(UUIDs.uuid4())
 # finished. An already existing engine can be supplied to improve local iteration times.
 function with_engine(f, ctx; existing_engine=nothing)
     engine_name = rnd_test_name()
+    @info "engine: $engine_name"
     if isnothing(existing_engine)
         custom_headers = get(ENV, "CUSTOM_HEADERS", nothing)
         start_time = time()
@@ -96,6 +97,7 @@ end
 # iteration times.
 function with_database(f, ctx; existing_database=nothing)
     dbname = rnd_test_name()
+    @info "database: $dbname"
     isnothing(existing_database) &&
         create_database(ctx, dbname)
     try
@@ -155,6 +157,7 @@ with_engine(CTX) do engine_name
                 query_string = "x, x^2, x^3, x^4 from x in {1; 2; 3; 4; 5}"
                 resp = exec(CTX, database_name, engine_name, query_string)
 
+                @info "transaction id: $(resp.transaction[:id])"
                 # transaction
                 @test resp.transaction[:state] == "COMPLETED"
 
@@ -187,6 +190,7 @@ with_engine(CTX) do engine_name
             @testset "exec_async" begin
                 query_string = "x, x^2, x^3, x^4 from x in {1; 2; 3; 4; 5}"
                 resp = exec_async(CTX, database_name, engine_name, query_string)
+                @info "transaction id: $(resp.transaction[:id])"
                 resp = wait_until_done(CTX, resp)
                 txn = resp.transaction
 
@@ -243,6 +247,8 @@ with_engine(CTX) do engine_name
                     csv_data,
                 )
 
+                @info "transaction id: $(resp.transaction[:id])"
+
                 @test resp.transaction[:state] == "COMPLETED"
 
                 results = Dict(
@@ -273,6 +279,7 @@ with_engine(CTX) do engine_name
                 @testset "empty arrow file" begin
                     query_string = "def output = true"
                     resp = exec(CTX, database_name, engine_name, query_string)
+                    @info "transaction id: $(resp.transaction[:id])"
                     @test show_result_str(resp) === """[:output]
                      ()
                     """
@@ -280,6 +287,7 @@ with_engine(CTX) do engine_name
                 @testset "multiple physical relations" begin
                     query_string = ":a, 1;  :b, 2,3;  :b, 4,5"
                     resp = exec(CTX, database_name, engine_name, query_string)
+                    @info "transaction id: $(resp.transaction[:id])"
                     @test show_result_str(resp) === """[:output, :a, Int64]
                      (1,)
 
@@ -300,6 +308,7 @@ with_engine(CTX) do engine_name
 
             models = Dict("test_model" => "def foo = :bar")
             resp = load_models(CTX, database_name, engine_name, models)
+            @info "transaction id: $(resp.transaction[:id])"
             @test resp.transaction.state == "COMPLETED"
 
             value = get_model(CTX, database_name, engine_name, "test_model")
@@ -309,6 +318,7 @@ with_engine(CTX) do engine_name
             @test "test_model" in models
 
             resp = delete_models(CTX, database_name, engine_name, ["test_model"])
+            @info "transaction id: $(resp.transaction[:id])"
             @test resp.transaction.state == "COMPLETED"
             @test length(resp.problems) == 0
 
@@ -318,6 +328,7 @@ with_engine(CTX) do engine_name
             # test escape special rel character
             models = Dict("percent" => "def foo = \"98%\"")
             resp = load_models(CTX, database_name, engine_name, models)
+            @info "transaction id: $(resp.transaction[:id])"
             @test resp.transaction.state == "COMPLETED"
             @test length(resp.problems) > 0
             resp = delete_models(CTX, database_name, engine_name, ["percent"])
@@ -326,6 +337,7 @@ with_engine(CTX) do engine_name
 
             models = Dict("percent" => "def foo = \"98\\%\"")
             resp = load_models(CTX, database_name, engine_name, models)
+            @info "transaction id: $(resp.transaction[:id])"
             @test resp.transaction.state == "COMPLETED"
             @test length(resp.problems) == 0
             value = get_model(CTX, database_name, engine_name, "percent")
@@ -335,6 +347,7 @@ with_engine(CTX) do engine_name
             @test "percent" in models
 
             resp = delete_models(CTX, database_name, engine_name, ["percent"])
+            @info "transaction id: $(resp.transaction[:id])"
             @test resp.transaction.state == "COMPLETED"
             @test length(resp.problems) == 0
 
@@ -344,6 +357,7 @@ with_engine(CTX) do engine_name
             # test escape """
             models = Dict("triple_quoted" => "def foo = \"\"\"98\\%\"\"\" ")
             resp = load_models(CTX, database_name, engine_name, models)
+            @info "transaction id: $(resp.transaction[:id])"
             @test resp.transaction.state == "COMPLETED"
             @test length(resp.problems) == 0
             value = get_model(CTX, database_name, engine_name, "triple_quoted")
@@ -354,6 +368,7 @@ with_engine(CTX) do engine_name
             @test length(resp.problems) == 0
 
             resp = delete_models(CTX, database_name, engine_name, ["triple_quoted"])
+            @info "transaction id: $(resp.transaction[:id])"
             @test resp.transaction.state == "COMPLETED"
             @test length(resp.problems) == 0
 
