@@ -13,6 +13,8 @@ import ProtoBuf
 
 Mocking.activate()
 
+include("wait_until_done.jl")
+
 # -----------------------------------
 # v2 transactions
 
@@ -269,7 +271,7 @@ end
         )
 
         apply(metadata_404_patch) do
-            RAI.wait_until_done(ctx, "<txn-id>", start_time_ns=0)
+            RAI.wait_until_done(ctx, "<txn-id>", start_time=0)
         end
     end
 
