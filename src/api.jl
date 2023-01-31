@@ -244,12 +244,12 @@ end
 
 function suspend_engine(ctx::Context, engine::AbstractString; kw...)
     payload=Dict("suspend" => true)
-    return _patch(ctx, joinpath(PATH_ENGINE, engine); body=JSON3.write(payload), kw...)
+    return _patch(ctx, "$PATH_ENGINE/$engine"; body=JSON3.write(payload), kw...)
 end
 
 function resume_engine(ctx::Context, engine::AbstractString; kw...)
     payload=Dict("suspend" => false)
-    return _patch(ctx, joinpath(PATH_ENGINE, engine); body=JSON3.write(payload), kw...)
+    return _patch(ctx, "$PATH_ENGINE/$engine"; body=JSON3.write(payload), kw...)
 end
 
 function create_oauth_client(ctx::Context, name::AbstractString, permissions; kv...)
