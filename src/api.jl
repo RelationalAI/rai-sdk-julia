@@ -207,7 +207,7 @@ function _request(ctx::Context, method, path; query = nothing, body = UInt8[], k
     # _print_request(method, path, query, body);
     try
         rsp = @mock request(ctx, method, _mkurl(ctx, path); query = query, body = body, kw...)
-        if rsp.status == 202
+        if length(rsp.body) == 0
             return Dict()
         else
             return JSON3.read(rsp.body)
