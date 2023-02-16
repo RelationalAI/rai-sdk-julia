@@ -207,7 +207,11 @@ function _request(ctx::Context, method, path; query = nothing, body = UInt8[], k
     # _print_request(method, path, query, body);
     try
         rsp = @mock request(ctx, method, _mkurl(ctx, path); query = query, body = body, kw...)
-        return JSON3.read(rsp.body)
+        if length(rsp.body) == 0
+            return Dict()
+        else
+            return JSON3.read(rsp.body)
+        end
     catch e
         if e isa HTTP.ExceptionRequest.StatusError
             throw(HTTPError(e.status, String(e.response.body)))
@@ -236,6 +240,16 @@ function create_engine(ctx::Context, engine::AbstractString; size = nothing, kw.
     isnothing(size) && (size = "XS")
     data = Dict("region" => ctx.region, "name" => engine, "size" => size)
     return _put(ctx, PATH_ENGINE; body = JSON3.write(data), kw...)
+end
+
+function suspend_engine(ctx::Context, engine::AbstractString; kw...)
+    payload=Dict("suspend" => true)
+    return _patch(ctx, "$PATH_ENGINE/$engine"; body=JSON3.write(payload), kw...)
+end
+
+function resume_engine(ctx::Context, engine::AbstractString; kw...)
+    payload=Dict("suspend" => false)
+    return _patch(ctx, "$PATH_ENGINE/$engine"; body=JSON3.write(payload), kw...)
 end
 
 function create_oauth_client(ctx::Context, name::AbstractString, permissions; kv...)

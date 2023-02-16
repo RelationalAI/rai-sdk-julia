@@ -43,7 +43,9 @@ export
     create_engine,
     delete_engine,
     get_engine,
-    list_engines
+    list_engines,
+    suspend_engine,
+    resume_engine
 
 export
     delete_models,

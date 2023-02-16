@@ -114,6 +114,25 @@ const CTX = test_context()
 # engine
 @testset "engine" begin end
 
+# -----------------------------------
+# suspend and resume
+with_engine(CTX) do engine_name
+    @testset "suspend" begin
+        suspend_engine(CTX, engine_name)
+        start_time = time()
+        _poll_with_specified_overhead(; POLLING_KWARGS..., start_time) do
+            eng = get_engine(CTX, engine_name)
+            return eng[:state] == "SUSPENDED" && eng[:suspend] == true
+        end
+        resume_engine(CTX, engine_name)
+        start_time = time()
+        _poll_with_specified_overhead(; POLLING_KWARGS..., start_time) do
+            eng = get_engine(CTX, engine_name)
+            return eng[:state] == "PROVISIONED" && eng[:suspend] == false
+        end
+    end
+end
+
 with_engine(CTX) do engine_name
     # -----------------------------------
     # database
