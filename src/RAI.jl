@@ -81,6 +81,7 @@ export
     load_json
 
 export
+    cancel_transaction,
     get_transaction,
     get_transaction_metadata,
     get_transaction_problems,
