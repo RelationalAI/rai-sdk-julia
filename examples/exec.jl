@@ -18,10 +18,10 @@ using RAI: Context, HTTPError, exec, load_config, show_result
 
 include("parseargs.jl")
 
-function run(database, engine, source; profile)
+function run(database, engine, source; profile="default", readonly=false)
     conf = load_config(; profile = profile)
     ctx = Context(conf)
-    rsp = exec(ctx, database, engine, source)
+    rsp = exec(ctx, database, engine, source; readonly=readonly)
     display(rsp)
     println()
 end
@@ -42,7 +42,7 @@ function main()
             source = open(args.file, "r")
         end
         isnothing(source) && return  # nothing to execute
-        run(args.database, args.engine, source; profile = args.profile)
+        run(args.database, args.engine, source; profile = args.profile, readonly=args.readonly)
     catch e
         e isa HTTPError ? show(e) : rethrow()
     end
