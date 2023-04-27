@@ -72,3 +72,8 @@ function PB._encoded_size(x::MetadataInfo)
     !isempty(x.relations) && (encoded_size += PB._encoded_size(x.relations, 1))
     return encoded_size
 end
+
+# Pretty printer to prevent large amounts of Metadata from being printed.
+function Base.show(io::IO, ::MIME"text/plain", x::MetadataInfo)
+    print(io, "MetadataInfo (length=", length(x.relations), ")")
+end
