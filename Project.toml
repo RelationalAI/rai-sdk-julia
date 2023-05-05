@@ -1,6 +1,6 @@
 name = "RAI"
 uuid = "9c30249a-7e08-11ec-0e99-a323e937e79f"
-version = "0.2.4"
+version = "0.2.5"
 
 [deps]
 ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
@@ -22,7 +22,7 @@ Arrow = "2"
 ConfParser = "0.1"
 EnumX = "1"
 ExceptionUnwrapping = "0.1"
-HTTP = "1.0"
+HTTP = "1.8"
 JSON3 = "1"
 Mocking = "0.7"
 ProtoBuf = "1"

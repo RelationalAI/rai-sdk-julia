@@ -176,6 +176,8 @@ function _authenticate!(
     return nothing
 end
 
+const POOL = HTTP.Pool(4096)
+
 # Note, this function is deliberately patterend on the HTTP.jl request funciton.
 function request(
     ctx::Context, method, url, h = HTTP.Header[], b = UInt8[];
@@ -184,6 +186,6 @@ function request(
     isnothing(body) && (body = UInt8[])
     headers = _ensure_headers(headers)
     _authenticate!(ctx, headers)
-    opts = (;redirect = false, connection_limit = 4096)
+    opts = (;redirect = false, pool = POOL)
     return HTTP.request(method, url, headers; query = query, body = body, opts..., kw...)
 end
