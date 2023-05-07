@@ -107,5 +107,6 @@ include("metadata.jl")
 include("response.jl")
 include("api.jl")
 include("results.jl")
+include("repl/REPLMode.jl")
 
 end
