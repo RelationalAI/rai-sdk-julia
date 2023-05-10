@@ -574,7 +574,7 @@ function exec(ctx::Context, database::AbstractString, engine::AbstractString, so
     return wait_until_done(ctx, transactionResponse; start_time = start_time)
 end
 
-function exec_async(ctx::Context, database::AbstractString, engine::AbstractString, source; inputs = nothing, readonly = false, kw...)
+function exec_async(ctx::Context, database::AbstractString, engine::AbstractString, source; inputs = nothing, readonly = false, language="rel", kw...)
     source isa IO && (source = read(source, String))
     tx_body = Dict(
         "dbname" => database,
@@ -583,6 +583,7 @@ function exec_async(ctx::Context, database::AbstractString, engine::AbstractStri
         #"nowait_durable" => self.nowait_durable, # TODO: currently unsupported
         "readonly" => readonly,
         # "sync_mode" => "async"
+        "language" => language,
     )
     if inputs !== nothing
         tx_body["v1_inputs"] = [_make_query_action_input(k, v) for (k, v) in inputs]

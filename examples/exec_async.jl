@@ -25,10 +25,10 @@ using RAI: Context, HTTPError, exec_async, load_config, show_result, get_transac
 
 include("parseargs.jl")
 
-function run(database, engine, source; profile)
+function run(database, engine, source; profile, language)
     conf = load_config(; profile = profile)
     ctx = Context(conf)
-    txn = exec_async(ctx, database, engine, source)
+    txn = exec_async(ctx, database, engine, source; language)
     println("Transaction is created...")
     display(txn)
     println()
@@ -40,6 +40,7 @@ function main()
         "engine", Dict(:help => "engine name", :required => true),
         "command", Dict(:help => "rel source string"),
         ["--file", "-f"], Dict(:help => "rel source file"),
+        "--language", Dict(:help => "transaction language"),
         "--readonly", Dict(:help => "readonly query (default: false)", :action => "store_true"),
         "--profile", Dict(:help => "config profile (default: default)"))
     try
@@ -50,7 +51,7 @@ function main()
             source = open(args.file, "r")
         end
         isnothing(source) && return  # nothing to execute
-        run(args.database, args.engine, source; profile = args.profile)
+        run(args.database, args.engine, source; profile = args.profile, language = args.language)
     catch e
         e isa HTTPError ? show(e) : rethrow()
     end
