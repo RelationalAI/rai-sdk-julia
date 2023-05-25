@@ -249,6 +249,7 @@ with_engine(CTX) do engine_name
             end
 
             @testset "exec_async_mocked" begin
+                print(pwd())
                 mocked_resp = HTTP.Response(
                     200, ["Content-Type" => "multipart/form-data; boundary=b11385ead6144ee0a9550db3672a7ccf"],
                     body = read("./test/multipart.data"),
