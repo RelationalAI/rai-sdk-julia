@@ -249,10 +249,10 @@ with_engine(CTX) do engine_name
             end
 
             @testset "exec_async_mocked" begin
-                print(pwd())
+                println(pwd())
                 mocked_resp = HTTP.Response(
                     200, ["Content-Type" => "multipart/form-data; boundary=b11385ead6144ee0a9550db3672a7ccf"],
-                    body = read("./test/multipart.data"),
+                    body = read("./multipart.data"),
                 )
                 patch = Mocking.Patch(RAI.request, rsp -> mocked_resp)
                 query_string = "x, x^2, x^3, x^4 from x in {1; 2; 3; 4; 5}"
