@@ -14,6 +14,9 @@ import UUIDs
 # cloud. Time out after ten minutes of silence.
 const POLLING_KWARGS = (; overhead_rate = 0.20, timeout_secs = 10*60, throw_on_timeout = true)
 
+# Activate mocking
+Mocking.activate()
+
 function test_context(profile_name = nothing)
     # If the ENV isn't configured for testing (local development), try using the local
     # Config file!
@@ -249,44 +252,30 @@ with_engine(CTX) do engine_name
             end
 
             @testset "exec_async_mocked" begin
-                println(pwd())
-                mocked_resp = HTTP.Response(
+                ctx = Context("region", "scheme", "host", "2342", nothing, "audience")
+
+                patch = @patch RAI.request(ctx::Context, args...; kw...) = HTTP.Response(
                     200, ["Content-Type" => "multipart/form-data; boundary=b11385ead6144ee0a9550db3672a7ccf"],
                     body = read("./multipart.data"),
                 )
-                patch = Mocking.Patch(RAI.request, rsp -> mocked_resp)
+
                 query_string = "x, x^2, x^3, x^4 from x in {1; 2; 3; 4; 5}"
                 apply(patch) do
-                    resp = exec_async(CTX, "mockedDB", "mockedEngine", query_string)
+                    resp = @mock exec_async(ctx, "mockedDB", "mockedEngine", query_string)
                     @info "transaction id: $(resp.transaction[:id])"
-                    resp = wait_until_done(CTX, resp)
                     txn = resp.transaction
 
                     @test txn[:state] == "COMPLETED"
                     txn_id = transaction_id(txn)
 
-                    # Poll until the transaction completes.
-                    wait_until_done(CTX, txn_id)
-
-                    # transaction
-                    @test RAI.transaction_is_done(get_transaction(CTX, txn_id))
-
-                    # Test calling this after the transaction already _is_ done:
-                    wait_until_done(CTX, txn_id)
-                    # Test all the API variants:
-                    wait_until_done(CTX, txn_id)
-                    wait_until_done(CTX, txn)
-                    wait_until_done(CTX, resp)
-                    wait_until_done(CTX, get_transaction(CTX, txn_id))
-
                     # metadata
                     # TODO (dba): Test new ProtoBuf metadata.
 
                     # problems
-                    @test length(get_transaction_problems(CTX, txn_id)) == 0
+                    @test length(resp.problems) == 0
 
                     # results
-                    results = get_transaction_results(CTX, txn_id)
+                    results = resp.results
                     @test length(resp.results) == 1
                     @test collect(resp.results[1][2]) == [
                         [1, 2, 3, 4, 5],
