@@ -34,6 +34,12 @@ end
     include("integration.jl")
 end
 
+@testset "user-agent" begin
+    @test RAI.PROJECT_VERSION isa String
+    @test !isempty(RAI.PROJECT_VERSION)
+    @test occursin(r"^rai-sdk-julia/\d+\.\d+\.\d+$", RAI._user_agent())
+end
+
 # def output =
 #     1, "foo", 3.4, :foo;
 #     2, "bar", 5.6, :foo

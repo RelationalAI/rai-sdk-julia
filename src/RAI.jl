@@ -20,10 +20,11 @@ APIs.
 """
 module RAI
 
-import Pkg
+import TOML
 
 # Used for sending the User Agent.
-const PROJECT_VERSION = Pkg.project().version
+project_toml = joinpath(dirname(@__DIR__), "Project.toml")
+const PROJECT_VERSION = TOML.parsefile(project_toml)["version"]
 
 export
     AccessToken,
