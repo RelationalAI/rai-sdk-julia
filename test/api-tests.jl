@@ -1,22 +1,18 @@
-using RAI
-using Test
-import HTTP, Arrow
-using JSON3
+@testsetup module V2Transactions
+
+using RAI.protocol: ConstantType, Kind, MetadataInfo, PrimitiveType, PrimitiveValue,
+    RelationId, RelationMetadata, RelTuple, RelType
+using HTTP
 using Mocking
-using Dates
-using RAI.protocol
-using RAI: _poll_with_specified_overhead, _write_token_cache, _read_token_cache
+using ProtoBuf
+using RAI
 
-using RAI: TransactionResponse
-
-import ProtoBuf
-
-Mocking.activate()
-
-include("wait_until_done.jl")
-
-# -----------------------------------
-# v2 transactions
+export make_patch, make_proto_metadata
+export
+    v2_async_response,
+    v2_fastpath_response,
+    v2_get_transaction_response_completed,
+    v2_get_transaction_results_response
 
 make_patch(response) = @patch RAI.request(ctx::Context, args...; kw...) = response
 
@@ -138,14 +134,10 @@ const v2_fastpath_response = HTTP.Response(200, [
     ),
 )
 
-function make_arrow_table(vals)
-    io = IOBuffer()
-    Arrow.write(io, (v1=vals,))
-    seekstart(io)
-    return Arrow.Table(io)
-end
+end # V2Transactions
 
-@testset "_poll_with_specified_overhead" begin
+@testitem "_poll_with_specified_overhead" begin
+    using RAI: _poll_with_specified_overhead
     @test isnothing(_poll_with_specified_overhead(() -> true; overhead_rate = 0.01))
     @test isnothing(_poll_with_specified_overhead(() -> false; overhead_rate = 0.01, n=0))
     @test isnothing(_poll_with_specified_overhead(() -> false; overhead_rate = 0.01, n=1))
@@ -153,13 +145,25 @@ end
     @test_throws ErrorException _poll_with_specified_overhead(() -> false; overhead_rate = 0.01, n=1, throw_on_timeout=true)
 end
 
-@testset "exec_async" begin
+@testitem "exec_async" setup=[V2Transactions] begin
+    using Arrow
+    using JSON3
+    using Mocking
+    Mocking.activate()
+
+    function make_arrow_table(vals)
+        io = IOBuffer()
+        Arrow.write(io, (v1=vals,))
+        seekstart(io)
+        return Arrow.Table(io)
+    end
+
     ctx = Context("region", "scheme", "host", "2342", nothing, "audience")
 
     @testset "async response" begin
         patch = make_patch(v2_async_response)
 
-        apply(patch) do
+        Mocking.apply(patch) do
             rsp = RAI.exec_async(ctx, "engine", "database", "2+2")
             @test rsp.transaction == JSON3.read("""{"id":"1fc9001b-1b88-8685-452e-c01bc6812429","state":"CREATED"}""")
         end
@@ -168,7 +172,7 @@ end
     @testset "sync response" begin
         patch = make_patch(v2_fastpath_response)
 
-        apply(patch) do
+        Mocking.apply(patch) do
             rsp = RAI.exec_async(ctx, "engine", "database", "2+2")
             @test rsp.transaction == JSON3.read("""{
                     "id": "a3e3bc91-0a98-50ba-733c-0987e160eb7d",
@@ -191,7 +195,7 @@ end
     @testset "get_transaction_results" begin
         patch = make_patch(v2_get_transaction_results_response)
 
-        apply(patch) do
+        Mocking.apply(patch) do
             rsp = RAI.get_transaction_results(ctx, "fake-txn-id")
             @test !isempty(rsp)
             @test rsp[1][2] isa Arrow.Table
@@ -199,11 +203,14 @@ end
     end
 end
 
-@testset "show_result" begin
+@testitem "show_result" setup=[V2Transactions] begin
+    using RAI: TransactionResponse
+    using Mocking
+    Mocking.activate()
     ctx = Context("region", "scheme", "host", "2342", nothing, "audience")
     patch = make_patch(v2_fastpath_response)
 
-    apply(patch) do
+    Mocking.apply(patch) do
         rsp = RAI.exec_async(ctx, "engine", "database", "2+2")
         @test rsp isa TransactionResponse
 
@@ -215,39 +222,44 @@ end
     end
 end
 
-struct NetworkError code::Int end
-make_fail_after_second_time_patch(args...) =
-    make_fail_after_nth_time_patch(2, args...)
-function make_fail_after_nth_time_patch(n, first_response, exception)
-    request_idx = 0
-    return (ctx::Context, args...; kw...) -> begin
-        request_idx += 1
-        if request_idx >= n
-            throw(exception)
-        else
-            return first_response
+@testsetup module Fail
+    using RAI: Context
+    struct NetworkError code::Int end
+    make_fail_after_second_time_patch(args...) =
+        make_fail_after_nth_time_patch(2, args...)
+    function make_fail_after_nth_time_patch(n, first_response, exception)
+        request_idx = 0
+        return (ctx::Context, args...; kw...) -> begin
+            request_idx += 1
+            if request_idx >= n
+                throw(exception)
+            else
+                return first_response
+            end
         end
     end
 end
 
-@testset "error handling" begin
+@testitem "error handling" setup=[Fail, V2Transactions] begin
+    using Mocking
+    Mocking.activate()
     ctx = Context("region", "scheme", "host", "2342", nothing, "audience")
-    patch = @patch RAI.request(ctx::Context, args...; kw...) = throw(NetworkError(404))
+    patch = @patch RAI.request(ctx::Context, args...; kw...) = throw(Fail.NetworkError(404))
 
-    apply(patch) do
-        @test_throws NetworkError(404) RAI.exec(ctx, "engine", "db", "2+2")
+    Mocking.apply(patch) do
+        @test_throws Fail.NetworkError(404) RAI.exec(ctx, "engine", "db", "2+2")
     end
 
     @testset "test that txn ID is logged for txn errors while polling" begin
         # Test for an error thrown _after_ the transaction is created, before it completes.
         sync_error_patch = Mocking.Patch(RAI.request,
-            make_fail_after_second_time_patch(v2_async_response, NetworkError(500)))
+            Fail.make_fail_after_second_time_patch(v2_async_response, Fail.NetworkError(500)))
 
         # See https://discourse.julialang.org/t/how-to-test-the-value-of-a-variable-from-info-log/37380/3
         # for an explanation of this logs-testing pattern.
         logs, _ = Test.collect_test_logs() do
-            apply(sync_error_patch) do
-                @test_throws NetworkError(500) RAI.exec(ctx, "engine", "db", "2+2")
+            Mocking.apply(sync_error_patch) do
+                @test_throws Fail.NetworkError(500) RAI.exec(ctx, "engine", "db", "2+2")
             end
         end
         sym, val = collect(pairs(logs[1].kwargs))[1]
@@ -262,7 +274,7 @@ end
         # Attempt to wait until a txn is done. This will attempt to fetch the metadata &
         # results once it's finished.
         metadata_404_patch = Mocking.Patch(RAI.request,
-            make_fail_after_second_time_patch(
+            Fail.make_fail_after_second_time_patch(
                 # get_transaction() returns a completed Transaction resource
                 v2_get_transaction_response_completed(),
                 # So then we attempt to fetch the metadata or results or problems, and error
@@ -270,25 +282,28 @@ end
             )
         )
 
-        apply(metadata_404_patch) do
+        Mocking.apply(metadata_404_patch) do
             RAI.wait_until_done(ctx, "<txn-id>", start_time=0)
         end
     end
 
 end
 
-@testset "exec with fast-path response only makes one request" begin
+@testitem "exec with fast-path response only makes one request" setup=[Fail, V2Transactions] begin
+    using Mocking
+    Mocking.activate()
     # Throw an error if the SDK attempts to make two requests to RAI API:
     only_1_request_patch = Mocking.Patch(RAI.request,
-        make_fail_after_second_time_patch(v2_fastpath_response, NetworkError(500)))
+        Fail.make_fail_after_second_time_patch(v2_fastpath_response, Fail.NetworkError(500)))
 
     ctx = Context("region", "scheme", "host", "2342", nothing, "audience")
-    apply(only_1_request_patch) do
+    Mocking.apply(only_1_request_patch) do
         @test RAI.exec(ctx, "engine", "db", "2+2") isa RAI.TransactionResponse
     end
 end
 
-@testset "hide client secrets in repl" begin
+@testitem "hide client secrets in repl" begin
+    using Dates
     access_token = AccessToken("abc_token", "run:transaction", 3600, datetime2unix(DateTime("2022-08-12T17:49:51.365")))
     creds = ClientCredentials("client_id", "xyz_client_secret", "https://login.relationalai.com/oauth/token")
     creds.access_token = access_token
@@ -298,7 +313,9 @@ end
     @test String(take!(io)) === "(client_id, xyz..., (abc..., run:transaction, 3600, 1.660326591365e9), https://login.relationalai.com/oauth/token)"
 end
 
-@testset "read write access token to cache" begin
+@testitem "read write access token to cache" begin
+    using Dates
+    using RAI: _write_token_cache, _read_token_cache
     access_token = AccessToken("abc_token", "run:transaction", 3600, datetime2unix(DateTime("2022-08-12T17:49:51.365")))
     creds = ClientCredentials("client_id", "xyz_client_secret", "https://login.relationalai.com/oauth/token")
     creds.access_token = access_token

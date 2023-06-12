@@ -26,12 +26,14 @@ HTTP = "1.8"
 JSON3 = "1"
 Mocking = "0.7"
 ProtoBuf = "1"
+ReTestItems = "1"
 Tables = "1"
 julia = "1.6"
 
 [extras]
+ReTestItems = "817f1d60-ba6b-4fd5-9520-3cf149f6a823"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 
 [targets]
-test = ["Test", "UUIDs"]
+test = ["Test", "UUIDs", "ReTestItems"]

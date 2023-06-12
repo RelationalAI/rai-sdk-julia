@@ -1,12 +1,16 @@
-using ExceptionUnwrapping: unwrap_exception_to_root
-
 # This test is _pretty complicated_ since it's trying to test something that depends on
 # timing: testing that wait_until_done() polls for the expected amount of time in between
 # calls to get_transaction.
 # Testing anything to do with timing is always complicated. We tackle it here by mocking
 # both sleep() and time(), and injecting fake times, and then making sure that the
 # function is computing the correct duration to sleep, based on those times.
-@testset "wait_until_done polls correctly" begin
+@testitem "wait_until_done polls correctly" begin
+    using ExceptionUnwrapping: unwrap_exception_to_root
+    using HTTP
+    using JSON3
+    using Mocking
+    Mocking.activate()
+
     now_ms = round(Int, time() * 1e3)
     txn_str = """{
             "id": "a3e3bc91-0a98-50ba-733c-0987e160eb7d",
@@ -28,7 +32,7 @@ using ExceptionUnwrapping: unwrap_exception_to_root
     i = 1
     time_patch = @patch function Base.time()
         v = times[i]
-        i += 1
+        global i += 1
         return v
     end
     # Here, we test that each call to sleep is the correct calculation of current "time"

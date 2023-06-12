@@ -1,15 +1,11 @@
-using Test
-
-using RAI
-import HTTP
-
-@testset "custom headers" begin
+@testitem "custom headers" begin
+    import HTTP
     ctx = Context("us-east", "https", "host", "2342", nothing, "audience")
     rsp = RAI.request(ctx, "GET", "https://www.example.com", headers = ["test" => "value"])
     @test rsp isa HTTP.Response
 end
 
-@testset "_ensure_headers" begin
+@testitem "_ensure_headers" begin
     h1 = RAI._ensure_headers()
     ks = first.(h1)
     @test in("Accept", ks)

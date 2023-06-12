@@ -1,10 +1,13 @@
-using Test
+@testsetup module Integration
+
+using JSON3
 using RAI
-using ArgParse
-using RAI: transaction_id, _poll_with_specified_overhead
+using RAI: _poll_with_specified_overhead
+using Test
+using UUIDs
 
-import UUIDs
-
+export with_engine, with_database, rnd_test_name
+export CTX, POLLING_KWARGS
 
 # -----------------------------------
 # context & setup
@@ -110,9 +113,13 @@ end
 # If the env vars are not properly set this will fail!
 const CTX = test_context()
 
+end
+
 # -----------------------------------
 # engine
-@testset "engine" begin end
+@testitem "engine" setup=[Integration] begin
+
+using RAI: transaction_id, _poll_with_specified_overhead
 
 # -----------------------------------
 # suspend and resume
@@ -397,10 +404,12 @@ with_engine(CTX) do engine_name
     end
 end
 
+end # engine
+
 # -----------------------------------
 # client
-@testset "oauth" begin end
+# @testitem "oauth" begin end
 
 # -----------------------------------
 # users
-@testset "users" begin end
+# @testitem "users" begin end
