@@ -49,7 +49,7 @@ function test_context(profile_name = nothing)
     return Context(config)
 end
 
-rnd_test_name() = "julia-sdk-" * string(UUIDs.uuid4())
+rnd_test_name() = "julia-sdk-" * ENV["RunId"] * "-" * ENV["RunnerOS"] * "-" * ENV["JULIA_VERSION"]
 
 # Creates an engine and executes `f` when the engine is ready. Deletes the engine when
 # finished. An already existing engine can be supplied to improve local iteration times.
