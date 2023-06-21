@@ -30,8 +30,30 @@ jobs:
           - x64
     steps:
       - uses: actions/checkout@v3
-      - uses: ./.github/actions/test
+
+      - name: TestOnSpot
+        id: runonspot
+        continue-on-error: true
+        if: always()
+        uses: ./.github/actions/test
         with:
           client_id: ${{ secrets.CLIENT_ID }}
           client_secret: ${{ secrets.CLIENT_SECRET }}
           client_credentials_url: ${{ secrets.CLIENT_CREDENTIALS_URL }}
+          custom_headers: '{"x-rai-parameter-engine-spec":"{\"experimentalFeatures\":{\"useSpotEngines\": true}}"}'
+
+      - name: SpotDebugInfo
+        id: spotdebugInfo
+        if: steps.runonspot.outcome != 'success'
+        run: |
+          echo "protential spot engine eviction check this link to confirm https://app.datadoghq.com/logs?query=service%3Aazure%20%40evt.name%3A%22Microsoft.Compute%2FvirtualMachineScaleSets%2FevictSpotVM%2Faction%22%20&agg_q=%40resourceId&cols=host%2Cservice&index=%2A&messageDisplay=inline&sort_m=count&sort_t=count&stream_sort=desc&top_n=10&top_o=top&viz=stream&x_missing=true&from_ts=1686931686080&to_ts=1686946086080&live=true"
+
+      - name: TestOnRegular
+        id: runonregular
+        if: steps.runonspot.outcome != 'success'
+        uses: ./.github/actions/test
+        with:
+          client_id: ${{ secrets.CLIENT_ID }}
+          client_secret: ${{ secrets.CLIENT_SECRET }}
+          client_credentials_url: ${{ secrets.CLIENT_CREDENTIALS_URL }}
+          custom_headers: '{"x-rai-parameter-engine-spec":"{\"experimentalFeatures\":{\"useSpotEngines\": true}}"}'
