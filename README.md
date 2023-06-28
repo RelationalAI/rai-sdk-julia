@@ -31,12 +31,13 @@ Sample configuration using OAuth client credentials:
 ```conf
 [default]
 host = azure.relationalai.com
-port = <api-port>      # optional, default: 443
-scheme = <scheme>      # optional, default: https
 client_id = <your client_id>
 client_secret = <your client secret>
-client_credentials_url = <account login URL>  # optional
-# default: https://login.relationalai.com/oauth/token
+
+# the following are all optional, with default values shown
+# port = 443
+# scheme = https
+# client_credentials_url = https://login.relationalai.com/oauth/token
 ```
 
 Client credentials can be created using the RAI console at https://console.relationalai.com/login
