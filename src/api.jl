@@ -619,6 +619,32 @@ function get_transaction(ctx::Context, id::AbstractString; kw...)
     return rsp.transaction
 end
 
+function get_transaction_events(ctx::Context, txn_id::AbstractString; kw...)
+    # TODO: support a cancellation token
+    path = PATH_ASYNC_TRANSACTIONS * "/$txn_id/events"
+    continuation_token = "0"
+    events = Channel()
+    @spawn begin
+        try
+            while continuation_token != ""
+                @info "requesting events" continuation_token txn_id
+                rsp = _get(ctx, path * "?stream=profiler&continuation_token=$(continuation_token)"; kw...)
+                for event in rsp.events
+                    put!(events, event)
+                end
+                continuation_token = rsp.continuation_token
+                if !rsp.more_available
+                    sleep(2)
+                end
+            end
+            close(events)
+        catch e
+            close(chan, e)
+        end
+    end
+    return events
+end
+
 function transaction_is_done(txn)
     if haskey(txn, "transaction")
         txn = txn["transaction"]
