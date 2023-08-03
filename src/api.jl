@@ -619,6 +619,12 @@ function get_transaction(ctx::Context, id::AbstractString; kw...)
     return rsp.transaction
 end
 
+function get_transaction_events(ctx::Context, id::AbstractString; kw...)
+    path = PATH_ASYNC_TRANSACTIONS * "/$id/events"
+    rsp = request(ctx, "GET", _mkurl(ctx, path); kw...)
+    return rsp
+end
+
 function transaction_is_done(txn)
     if haskey(txn, "transaction")
         txn = txn["transaction"]
