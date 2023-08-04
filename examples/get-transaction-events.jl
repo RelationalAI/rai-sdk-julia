@@ -40,7 +40,6 @@ function run(; id, profile, streams=10, queries_per_stream=10)
                             resp.status,
                             length(resp.body),
                             HTTP.header(resp, "x-request-id"),
-                            HTTP.header(resp, "x-queue-time"),
                         )
                         successes += 1
                     catch err
