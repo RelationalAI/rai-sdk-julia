@@ -15,14 +15,44 @@
 # List engines, optionally filtered by state.
 
 using RAI: Context, HTTPError, load_config, get_transaction_events
+using HTTP
 
 include("parseargs.jl")
 
-function run(; id, profile)
+function run(; id, profile, streams=10, queries_per_stream=10)
     conf = load_config(; profile = profile)
     ctx = Context(conf)
-    rsp = get_transaction_events(ctx, id)
-    println(rsp)
+    
+    successes = 0
+    failures = 0
+    
+    Threads.@sync begin
+        for t in 1:streams
+            Threads.@spawn begin
+                for i in 1:queries_per_stream
+                    @info "starting $t:$i"
+                    try
+                        resp_timed = @timed get_transaction_events(ctx, id)
+                        resp = resp_timed.value
+                        @info(
+                            "finished $t:$i",
+                            resp_timed.time,
+                            resp.status,
+                            length(resp.body),
+                            HTTP.header(resp, "x-request-id"),
+                            HTTP.header(resp, "x-queue-time"),
+                        )
+                        successes += 1
+                    catch err
+                        @error "request $t:$i failed" err
+                        failures += 1
+                    end
+                end
+            end
+        end
+    end
+    
+    return (; successes, failures)
 end
 
 function main()
