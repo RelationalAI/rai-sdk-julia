@@ -32,7 +32,7 @@ function run(; id, profile, streams=10, queries_per_stream=10)
                 for i in 1:queries_per_stream
                     @info "starting $t:$i"
                     try
-                        resp_timed = @timed get_with_exp_backoff(ctx, id, t, i)
+                        resp_timed = @timed get_with_exp_backoff(ctx, id, 1, t, i)
                         resp = resp_timed.value
                         @info(
                             "finished $t:$i",
@@ -54,14 +54,17 @@ function run(; id, profile, streams=10, queries_per_stream=10)
     return (; successes, failures)
 end
 
-function get_with_exp_backoff(ctx, id, t, i)
+max_delay = 10
+
+function get_with_exp_backoff(ctx, id, attempt, t, i)
     try
         return get_transaction_events(ctx, id)
     catch err
         if err isa HTTP.StatusError
-            @info "backoff $t $i"
-            sleep(1)
-            get_with_exp_backoff(ctx, id, t, i)
+            sleep_dur = min(max_delay, 2 ^ attempt) + rand()
+            @info "backoff $t:$i for $sleep_dur sec"
+            sleep(sleep_dur)
+            get_with_exp_backoff(ctx, id, attempt + 1, t, i)
         else
             rethrow(err)
             failures += 1
