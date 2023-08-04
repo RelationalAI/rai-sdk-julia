@@ -19,7 +19,7 @@ using HTTP
 
 include("parseargs.jl")
 
-function run(; id, profile, streams=10, queries_per_stream=10)
+function run(; id, profile, streams=10, queries_per_stream=3)
     conf = load_config(; profile = profile)
     ctx = Context(conf)
     
