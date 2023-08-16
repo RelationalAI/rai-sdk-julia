@@ -621,7 +621,7 @@ end
 
 function get_transaction_events(ctx::Context, id::AbstractString; kw...)
     path = PATH_ASYNC_TRANSACTIONS * "/$id/events"
-    rsp = request(ctx, "GET", _mkurl(ctx, path); kw...)
+    rsp = _get(ctx, path; kw...)
     return rsp
 end
 

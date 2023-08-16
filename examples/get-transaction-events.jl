@@ -37,9 +37,7 @@ function run(; id, profile, streams=50, queries_per_stream=3)
                         @info(
                             "finished $t:$i",
                             resp_timed.time,
-                            resp.status,
-                            length(resp.body),
-                            HTTP.header(resp, "x-request-id"),
+                            length(resp.events),
                         )
                         successes += 1
                     catch err
@@ -60,7 +58,7 @@ function get_with_exp_backoff(ctx, id, attempt, t, i)
     try
         return get_transaction_events(ctx, id)
     catch err
-        if err isa HTTP.StatusError
+        if err isa HTTPError && err.status_code == 429
             sleep_dur = min(max_delay, 2 ^ attempt) + rand()
             @info "backoff $t:$i for $sleep_dur sec"
             sleep(sleep_dur)
@@ -77,7 +75,8 @@ function main()
         "--id", Dict(:help => "transaction id"),
         "--profile", Dict(:help => "config profile (default: default)"))
     try
-        run(; id = args.id, profile = args.profile)
+        res = run(; id = args.id, profile = args.profile)
+        println(res)
     catch e
         e isa HTTPError ? show(e) : rethrow()
     end
