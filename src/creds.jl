@@ -47,7 +47,7 @@ end
 
 function isexpired(access_token::AccessToken)::Bool
     expires_on = access_token.created_on + access_token.expires_in
-    return expires_on - 5 < datetime2unix(now()) # anticipate token expiration by 5 seconds
+    return expires_on - 60 < datetime2unix(now()) # anticipate token expiration by 60 seconds
 end
 
 abstract type Credentials end
