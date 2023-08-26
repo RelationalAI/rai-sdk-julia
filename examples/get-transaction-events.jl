@@ -15,6 +15,7 @@
 # List engines, optionally filtered by state.
 
 using RAI: Context, HTTPError, load_config, get_transaction_events
+using JSON3
 using HTTP
 
 include("parseargs.jl")
@@ -78,7 +79,7 @@ function main()
     try
         res = run(; id = args.id, profile = args.profile)
         for event in res
-            println(event)
+            println(JSON3.write(event))
         end
     catch e
         e isa HTTPError ? show(e) : rethrow()
