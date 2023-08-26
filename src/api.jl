@@ -621,8 +621,17 @@ end
 
 function get_transaction_events(ctx::Context, id::AbstractString; kw...)
     path = PATH_ASYNC_TRANSACTIONS * "/$id/events"
-    rsp = _get(ctx, path; kw...)
-    return rsp
+    events = []
+    continuation_token = "0"
+    while continuation_token != ""
+        @info "continuation token" continuation_token
+        rsp = _get(ctx, path * "?continuation_token=$(continuation_token)"; kw...)
+        for event in rsp.events
+            push!(events, event)
+        end
+        continuation_token = rsp.continuation_token
+    end
+    return events
 end
 
 function transaction_is_done(txn)
