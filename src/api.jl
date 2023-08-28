@@ -213,7 +213,7 @@ function _request(ctx::Context, method, path; query = nothing, body = UInt8[], k
             return JSON3.read(rsp.body)
         end
     catch e
-        @info "_request for $path failed with error: $e"
+        @info "_request for $path failed with error"
         if e isa HTTP.ExceptionRequest.StatusError
             throw(HTTPError(e.status, String(e.response.body)))
         else
