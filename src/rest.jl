@@ -187,5 +187,6 @@ function request(
     headers = _ensure_headers(headers)
     _authenticate!(ctx, headers)
     opts = (;redirect = false, pool = POOL)
+    @info "HTTP.request" method url query
     return HTTP.request(method, url, headers; query = query, body = body, opts..., kw...)
 end
