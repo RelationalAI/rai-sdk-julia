@@ -619,6 +619,12 @@ function get_transaction(ctx::Context, id::AbstractString; kw...)
     return rsp.transaction
 end
 
+function get_transaction_profile(ctx::Context, id::AbstractString; kw...)
+    path = PATH_ASYNC_TRANSACTIONS * "/$id/profile"
+    rsp = _get(ctx, path; kw...)
+    return rsp
+end
+
 function get_transaction_events(ctx::Context, id::AbstractString; kw...)
     path = PATH_ASYNC_TRANSACTIONS * "/$id/events"
     events = []
