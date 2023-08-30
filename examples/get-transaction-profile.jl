@@ -33,7 +33,7 @@ function main()
         "--profile", Dict(:help => "config profile (default: default)"))
     try
         res = run(; id = args.id, profile = args.profile)
-        JSON3.write(res)
+        println(JSON3.write(res))
     catch e
         e isa HTTPError ? show(e) : rethrow()
     end
