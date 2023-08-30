@@ -186,7 +186,7 @@ function request(
     isnothing(body) && (body = UInt8[])
     headers = _ensure_headers(headers)
     _authenticate!(ctx, headers)
-    opts = (;redirect = false, pool = POOL)
+    opts = (;redirect = false, pool = POOL, verbose=3)
     @info "HTTP.request" method url
     r = HTTP.request(method, url, headers; query = query, body = body, opts..., kw...)
     @info "HTTP.response" method url r.status
