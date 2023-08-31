@@ -637,7 +637,7 @@ function get_transaction_metadata(ctx::Context, id::AbstractString; kw...)
     path = PATH_ASYNC_TRANSACTIONS * "/$id/metadata"
     path = _mkurl(ctx, path)
     headers = _ensure_proto_accept_header(get(kw, :headers, []))
-    rsp = @mock request(ctx, "GET", path; kw..., headers)
+    rsp = @mock request(ctx, "GET", path; kw..., headers, readtimeout=120)
     d = ProtoBuf.ProtoDecoder(IOBuffer(rsp.body));
     metadata = ProtoBuf.decode(d, protocol.MetadataInfo)
     return metadata
@@ -645,14 +645,14 @@ end
 
 function get_transaction_problems(ctx::Context, id::AbstractString; kw...)
     path = PATH_ASYNC_TRANSACTIONS * "/$id/problems"
-    rsp = _get(ctx, path; kw...)
+    rsp = _get(ctx, path; kw..., readtimeout=120)
     return rsp
 end
 
 function get_transaction_results(ctx::Context, id::AbstractString; kw...)
     path = PATH_ASYNC_TRANSACTIONS * "/$id/results"
     path = _mkurl(ctx, path)
-    rsp = @mock request(ctx, "GET", path; kw...)
+    rsp = @mock request(ctx, "GET", path; kw..., readtimeout=120)
     content_type = HTTP.header(rsp, "Content-Type")
     if !occursin("multipart/form-data", content_type)
         throw(HTTPError(400, "Unexpected response content-type for rsp:\n$rsp"))
