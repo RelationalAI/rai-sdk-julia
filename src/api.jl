@@ -633,8 +633,7 @@ function get_transaction_events(ctx::Context, id::AbstractString; kw...)
         @info "requesting events" continuation_token
         rsp = _get(ctx, path * "?stream=profiler&continuation_token=$(continuation_token)"; kw...)
         for event in rsp.events
-            # TODO: return the events in a channel or something?
-            println(JSON3.write(event))
+            push!(events, event)
         end
         continuation_token = rsp.continuation_token
         if !rsp.more_available

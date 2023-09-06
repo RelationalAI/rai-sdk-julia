@@ -33,12 +33,12 @@ function run(; id, profile, streams=50, queries_per_stream=3)
                 for i in 1:queries_per_stream
                     @info "starting $t:$i"
                     try
-                        resp_timed = @timed get_with_exp_backoff(ctx, id, 1, t, i)
-                        resp = resp_timed.value
+                        events_timed = @timed get_with_exp_backoff(ctx, id, 1, t, i)
+                        events = events_timed.value
                         @info(
                             "finished $t:$i",
-                            resp_timed.time,
-                            length(resp.events),
+                            events_timed.time,
+                            length(events),
                         )
                         successes += 1
                     catch err
