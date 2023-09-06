@@ -18,6 +18,7 @@
 using Dates: now, datetime2unix
 import HTTP
 import JSON3
+import Logging
 
 """
     Context
@@ -188,7 +189,9 @@ function request(
     _authenticate!(ctx, headers)
     opts = (;redirect = false, pool = POOL, verbose=3)
     @info "HTTP.request" method url opts kw
-    r = HTTP.request(method, url, headers; query = query, body = body, opts..., kw...)
+    r = Base.with_logger(Logging.ConsoleLogger(stderr, Logging.Debug)) do
+        HTTP.request(method, url, headers; query = query, body = body, opts..., kw...)
+    end
     @info "HTTP.response" method url r.status
     return r
 end
