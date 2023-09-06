@@ -27,24 +27,6 @@ function run(; id, profile)
     return get_transaction_events(ctx, id)
 end
 
-max_delay = 10
-
-function get_with_exp_backoff(ctx, id, attempt, t, i)
-    try
-        return get_transaction_events(ctx, id)
-    catch err
-        if err isa HTTPError && err.status_code == 429
-            sleep_dur = min(max_delay, 2 ^ attempt) + rand()
-            @info "backoff $t:$i for $sleep_dur sec"
-            sleep(sleep_dur)
-            get_with_exp_backoff(ctx, id, attempt + 1, t, i)
-        else
-            rethrow(err)
-            failures += 1
-        end
-    end
-end
-
 function main()
     args = parseargs(
         "--id", Dict(:help => "transaction id"),
