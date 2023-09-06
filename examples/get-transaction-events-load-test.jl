@@ -20,11 +20,37 @@ using HTTP
 
 include("parseargs.jl")
 
-function run(; id, profile)
+function run(; id, profile, streams=50, queries_per_stream=3)
     conf = load_config(; profile = profile)
     ctx = Context(conf)
-
-    return get_transaction_events(ctx, id)
+    
+    successes = 0
+    failures = 0
+    
+    Threads.@sync begin
+        for t in 1:streams
+            Threads.@spawn begin
+                for i in 1:queries_per_stream
+                    @info "starting $t:$i"
+                    try
+                        resp_timed = @timed get_with_exp_backoff(ctx, id, 1, t, i)
+                        resp = resp_timed.value
+                        @info(
+                            "finished $t:$i",
+                            resp_timed.time,
+                            length(resp.events),
+                        )
+                        successes += 1
+                    catch err
+                        @error "request $t:$i failed" err
+                        failures += 1
+                    end
+                end
+            end
+        end
+    end
+    
+    return (; successes, failures)
 end
 
 max_delay = 10
