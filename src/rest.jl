@@ -187,7 +187,7 @@ function request(
     isnothing(body) && (body = UInt8[])
     headers = _ensure_headers(headers)
     _authenticate!(ctx, headers)
-    opts = (;redirect = false, pool = POOL, verbose=2)
+    opts = (;redirect = false, pool = POOL, readtimeout=120, logerrors=true, verbose=3)
     @info "HTTP.request" method url
     r = Base.with_logger(Logging.ConsoleLogger(stderr, Logging.Debug)) do
         HTTP.request(method, url, headers; query = query, body = body, opts..., kw...)
