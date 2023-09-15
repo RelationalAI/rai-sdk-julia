@@ -2,6 +2,9 @@
 
 ## main
 
+## v0.2.8
+* Updated HTTP lib to v1.9.15
+
 ## v0.2.2
 * Add timeout/keep-alive options for access token
 * Add custom engine version support for integration tests
