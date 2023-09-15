@@ -176,7 +176,7 @@ function _authenticate!(
     return nothing
 end
 
-const POOL = HTTP.Pool(4096)
+const POOL = HTTP.Pool(4096 * 4)
 
 # Note, this function is deliberately patterend on the HTTP.jl request funciton.
 function request(
