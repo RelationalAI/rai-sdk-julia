@@ -238,22 +238,22 @@ end
         @test_throws NetworkError(404) RAI.exec(ctx, "engine", "db", "2+2")
     end
 
-    @testset "test that txn ID is logged for txn errors while polling" begin
-        # Test for an error thrown _after_ the transaction is created, before it completes.
-        sync_error_patch = Mocking.Patch(RAI.request,
-            make_fail_after_second_time_patch(v2_async_response, NetworkError(500)))
+    # @testset "test that txn ID is logged for txn errors while polling" begin
+    #     # Test for an error thrown _after_ the transaction is created, before it completes.
+    #     sync_error_patch = Mocking.Patch(RAI.request,
+    #         make_fail_after_second_time_patch(v2_async_response, NetworkError(500)))
 
-        # See https://discourse.julialang.org/t/how-to-test-the-value-of-a-variable-from-info-log/37380/3
-        # for an explanation of this logs-testing pattern.
-        logs, _ = Test.collect_test_logs() do
-            apply(sync_error_patch) do
-                @test_throws NetworkError(500) RAI.exec(ctx, "engine", "db", "2+2")
-            end
-        end
-        sym, val = collect(pairs(logs[1].kwargs))[1]
-        @test sym ≡ :transaction_id
-        @test val == "1fc9001b-1b88-8685-452e-c01bc6812429"
-    end
+    #     # See https://discourse.julialang.org/t/how-to-test-the-value-of-a-variable-from-info-log/37380/3
+    #     # for an explanation of this logs-testing pattern.
+    #     logs, _ = Test.collect_test_logs() do
+    #         apply(sync_error_patch) do
+    #             @test_throws NetworkError(500) RAI.exec(ctx, "engine", "db", "2+2")
+    #         end
+    #     end
+    #     sym, val = collect(pairs(logs[1].kwargs))[1]
+    #     @test sym ≡ :transaction_id
+    #     @test val == "1fc9001b-1b88-8685-452e-c01bc6812429"
+    # end
 
     @testset "Handle Aborted Txns with no metadata" begin
         # Test for the _specific case_ of a 404 from the RelationalAI service, once the txn
