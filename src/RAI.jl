@@ -86,7 +86,8 @@ export
     get_transaction,
     get_transaction_metadata,
     get_transaction_problems,
-    get_transaction_results
+    get_transaction_results,
+    get_transaction_events
 
 export
     Relation,

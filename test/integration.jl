@@ -317,6 +317,23 @@ with_engine(CTX) do engine_name
                 end
             end
 
+            @testset "events" begin
+                query_string = "x, x^2, x^3, x^4 from x in {1; 2; 3; 4; 5}"
+                resp = exec(CTX, database_name, engine_name, query_string)
+
+                @info "transaction id: $(resp.transaction[:id])"
+                # transaction
+                @test resp.transaction[:state] == "COMPLETED"
+
+                # metadata
+                @test length(resp.metadata.relations) == 1
+                # problems
+                @test length(resp.problems) == 0
+                
+                channel = get_transaction_events(CTX, resp.transaction[:id])
+                @test length(collect(channel)) > 0
+            end
+
         end
 
         # -----------------------------------
