@@ -620,30 +620,23 @@ function get_transaction(ctx::Context, id::AbstractString; kw...)
 end
 
 function get_transaction_events(ctx::Context, txn_id::AbstractString; kw...)
-    # TODO: support a cancellation token
+    # TODO: support a way for the caller to stop the polling
     path = PATH_ASYNC_TRANSACTIONS * "/$txn_id/events/profiler"
     continuation_token = ""
-    events = Channel()
-    @spawn begin
-        try
-            while true
-                @info "requesting events" continuation_token txn_id
-                rsp = _get(ctx, path; continuation_token, kw...)
-                for event in rsp.events
-                    put!(events, event)
-                end
-                continuation_token = rsp.continuation_token
-                if continuation_token == ""
-                    break
-                end
-                sleep(2)
+    return Channel(spawn=true) do events
+        while true
+            @info "requesting events" continuation_token txn_id
+            rsp = _get(ctx, path; continuation_token, kw...)
+            for event in rsp.events
+                put!(events, event)
             end
-            close(events)
-        catch e
-            close(chan, e)
+            continuation_token = rsp.continuation_token
+            if continuation_token == ""
+                break
+            end
+            sleep(2)
         end
     end
-    return events
 end
 
 function transaction_is_done(txn)
