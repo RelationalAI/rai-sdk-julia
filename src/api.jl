@@ -622,20 +622,21 @@ end
 function get_transaction_events(ctx::Context, txn_id::AbstractString; kw...)
     # TODO: support a cancellation token
     path = PATH_ASYNC_TRANSACTIONS * "/$txn_id/events"
-    continuation_token = "0"
+    continuation_token = ""
     events = Channel()
     @spawn begin
         try
-            while continuation_token != ""
+            while true
                 @info "requesting events" continuation_token txn_id
                 rsp = _get(ctx, path * "/profiler&continuation_token=$(continuation_token)"; kw...)
                 for event in rsp.events
                     put!(events, event)
                 end
                 continuation_token = rsp.continuation_token
-                if !rsp.more_available
-                    sleep(2)
+                if continuation_token == ""
+                    break
                 end
+                sleep(2)
             end
             close(events)
         catch e
