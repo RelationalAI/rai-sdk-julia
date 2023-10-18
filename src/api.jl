@@ -628,7 +628,7 @@ function get_transaction_events(ctx::Context, txn_id::AbstractString; kw...)
         try
             while continuation_token != ""
                 @info "requesting events" continuation_token txn_id
-                rsp = _get(ctx, path * "?stream=profiler&continuation_token=$(continuation_token)"; kw...)
+                rsp = _get(ctx, path * "/profiler&continuation_token=$(continuation_token)"; kw...)
                 for event in rsp.events
                     put!(events, event)
                 end

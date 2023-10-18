@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-# List engines, optionally filtered by state.
+# List transaction events.
 
 using RAI: Context, HTTPError, load_config, get_transaction_events
 using JSON3
