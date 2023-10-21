@@ -626,7 +626,7 @@ function get_transaction_events(ctx::Context, txn_id::AbstractString; kw...)
     return Channel(spawn=true) do events
         while true
             @info "requesting events" continuation_token txn_id
-            rsp = _get(ctx, path; continuation_token, kw...)
+            rsp = _get(ctx, path; query=Dict("continuation_token" => continuation_token), kw...)
             for event in rsp.events
                 put!(events, event)
             end
