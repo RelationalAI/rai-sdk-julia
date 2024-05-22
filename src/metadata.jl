@@ -1,5 +1,7 @@
 import ProtoBuf
 
+import ..RAI.RelTypes
+
 # Conversion to Julia primitive types
 # ========================================================================================
 const proto_to_julia_type_map = Dict(
@@ -43,7 +45,7 @@ _from_proto(T::Type, v) = T(v)
 # TODO (dba) Consider creating a `Symbol` here instead of a `String` as in Julia a
 # specialized, or constant, string is a `Symbol`
 # Byte array must be copied because Symbol takes ownership!
-_from_proto(::Type{String}, v) = String(copy(v))
+_from_proto(::Type{String}, v) = Symbol(String(copy(v)))
 _from_proto(::Type{Int16}, v) = v % Int16
 _from_proto(::Type{Int8}, v) = v % Int8
 _from_proto(::Type{UInt16}, v) = v % Int16
@@ -99,12 +101,19 @@ function show_rel_type(io::IO, rel_type::protocol.RelType{protocol.ConstantType,
 end
 # ValueType
 function show_rel_type(io::IO, rel_type::protocol.RelType{Nothing,protocol.ValueType})
-    print(io, "ValueType(")
-    args = rel_type.value_type.argument_types
-    for (idx, type) in enumerate(args)
-        show_rel_type(io, type)
-        length(args) !== idx && print(io, ", ")
+    # First we check if for this value type a system- or user-defined Julia type is
+    # registered.
+    T = RelTypes.JuliaType(rel_type) 
+    if isnothing(T)
+        print(io, "ValueType(")
+        args = rel_type.value_type.argument_types
+        for (idx, type) in enumerate(args)
+            show_rel_type(io, type)
+            length(args) !== idx && print(io, ", ")
+        end
+        print(io, ")")
+    else
+        print(io, T)
     end
-    print(io, ")")
     return nothing
 end
