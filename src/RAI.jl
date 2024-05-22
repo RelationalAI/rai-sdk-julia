@@ -109,4 +109,11 @@ include("response.jl")
 include("api.jl")
 include("results.jl")
 
+using HTTP
+
+function __init__()
+    HTTP.SOCKET_TYPE_TLS[] = HTTP.MbedTLS.SSLContext
+    return
+end
+
 end
