@@ -27,7 +27,7 @@ inputs:
   julia_version:
     required: false
     description: 'Julia version to test with'
-    default: '1.8'
+    default: '1.10'
 
   arch:
     required: false
