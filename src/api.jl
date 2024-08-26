@@ -542,7 +542,7 @@ completed, and returns a Dict holding the Transaction resource and its results a
 
 # Examples:
 ```julia
-julia> exec(ctx, "my_database", "my_engine", "2 + 2")
+julia> exec(ctx, "my_database", "my_engine", "def output {2 + 2}")
 Dict{String, Any} with 4 entries:
   "metadata"    => Union{}[]
   "problems"    => Union{}[]
@@ -550,7 +550,7 @@ Dict{String, Any} with 4 entries:
   "transaction" => {…
 
 julia> exec(ctx, "my_database", "my_engine", \"""
-           def insert:my_relation = 1, 2, 3
+           def insert[:my_relation]: (1, 2, 3)
            \""",
            readonly = false,
        )
@@ -712,7 +712,7 @@ function _gen_literal(value)
 end
 
 function _gen_literal(value::Dict)
-    items = ["$(_gen_literal(v)),$(_gen_literal(k))" for (k, v) in value]
+    items = ["($(_gen_literal(v)),$(_gen_literal(k)))" for (k, v) in value]
     return "{" + join(items, ";") + "}"
 end
 
@@ -725,12 +725,12 @@ _gen_literal(value::Symbol) = ":$value"
 
 function _gen_literal(value::Vector)
     items = [_gen_literal(item) for item in value]
-    return "{" + join(items, ",") + "}"
+    return "{(" + join(items, ",") + ")}"
 end
 
 function _gen_config(name, value)
     isnothing(value) && return ""
-    return "def config:syntax:$name=$(_gen_literal(value))"
+    return "def config[:syntax, :$name]: $(_gen_literal(value))"
 end
 
 function _gen_config(syntax::Dict)
@@ -761,8 +761,8 @@ function load_csv(
         "escapechar" => escapechar,
         "quotechar" => quotechar)
     source = _gen_config(syntax)
-    source *= """def config:data = data
-                 def insert:$relation = load_csv[config]"""
+    source *= """def config[:data]: data
+                 def insert[:$relation]: load_csv[config]"""
     return exec(ctx, database, engine, source; inputs = inputs, readonly = false, kw...)
 end
 
@@ -771,8 +771,8 @@ end
 # todo: data should be string or io
 function load_json(ctx::Context, database::AbstractString, engine::AbstractString, relation::AbstractString, data; kw...)
     inputs = Dict("data" => _read_data(data))
-    source = """def config:data = data\n
-                def insert:$relation = load_json[config]"""
+    source = """def config[:data]: data\n
+                def insert[:$relation]: load_json[config]"""
     return exec(ctx, database, engine, source; inputs = inputs, readonly = false, kw...)
 end
 
@@ -785,8 +785,8 @@ function load_models(ctx::Context, database::AbstractString, engine::AbstractStr
     for (name, value) in models
         input_name = string("input_", rand_uint, "_", index)
         push!(queries, """
-            def delete:rel:catalog:model["$name"] = rel:catalog:model["$name"]
-            def insert:rel:catalog:model["$name"] = $input_name
+            def delete[:rel, :catalog, :model, "$name"]: rel[:catalog, :model, "$name"]
+            def insert[:rel, :catalog, :model, "$name"]: $input_name
         """)
 
         queries_inputs[input_name] = value
@@ -805,8 +805,8 @@ function load_models_async(ctx::Context, database::AbstractString, engine::Abstr
     for (name, value) in models
         input_name = string("input_", rand_uint, "_", index)
         push!(queries, """
-            def delete:rel:catalog:model["$name"] = rel:catalog:model["$name"]
-            def insert:rel:catalog:model["$name"] = $input_name
+            def delete[:rel, :catalog, :model, "$name"]: rel[:catalog, :model, "$name"]
+            def insert[:rel, :catalog, :model, "$name"]: $input_name
         """)
 
         queries_inputs[input_name] = value
@@ -818,7 +818,7 @@ end
 
 function list_models(ctx::Context, database::AbstractString, engine::AbstractString; kw...)
     out_name = "model$(rand(UInt64))"
-    query = """ def output:$out_name[name] = rel:catalog:model(name, _) """
+    query = """ def output(:$out_name, name): rel(:catalog, :model, name, _) """
     resp = exec(ctx, database, engine, query)
     for result in resp.results
         if occursin("/:output/:$out_name", result.first)
@@ -829,7 +829,7 @@ end
 
 function get_model(ctx::Context, database::AbstractString, engine::AbstractString, name::AbstractString; kw...)
     out_name = "model$(rand(UInt64))"
-    query = """def output:$out_name = rel:catalog:model[$(_escape_string_for_rel(name))]"""
+    query = """def output[:$out_name]: rel[:catalog, :model, $(_escape_string_for_rel(name))]"""
     resp = exec(ctx, database, engine, query)
     for result in resp.results
         if occursin("/:output/:$out_name", result.first)
@@ -841,14 +841,14 @@ end
 
 function delete_models(ctx::Context, database::AbstractString, engine::AbstractString, models::Vector{String}; kw...)
     queries = ["""
-            def delete:rel:catalog:model[$(_escape_string_for_rel(model))] = rel:catalog:model[$(_escape_string_for_rel(model))]
+            def delete[:rel, :catalog, :model, $(_escape_string_for_rel(model))]: rel[:catalog, :model, $(_escape_string_for_rel(model))]
         """ for model in models]
     return exec(ctx, database, engine, join(queries, "\n"); readonly=false, kw...)
 end
 
 function delete_models_async(ctx::Context, database::AbstractString, engine::AbstractString, model::AbstractString; kw...)
     queries = ["""
-            def delete:rel:catalog:model[$(_escape_string_for_rel(model))] = rel:catalog:model[$(_escape_string_for_rel(model))
+            def delete[:rel, :catalog, :model, $(_escape_string_for_rel(model))]: rel[:catalog, :model, $(_escape_string_for_rel(model))]
         """ for model in models]
     return exec_async(ctx, database, engine, join(queries, "\n"); readonly=false, kw...)
 end
