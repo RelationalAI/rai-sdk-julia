@@ -1,1 +1,1 @@
-def R = "hello", "world"
+def R {("hello", "world")}
