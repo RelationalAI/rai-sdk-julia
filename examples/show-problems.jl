@@ -23,7 +23,7 @@ function run(database, engine; profile)
     conf = load_config(; profile = profile)
     ctx = Context(conf)
     # TODO: rewrite via async + get_transaction_problems
-    rsp = exec_v1(ctx, database, engine, "def output = **nonsense**")
+    rsp = exec_v1(ctx, database, engine, "def output { **nonsense** }")
     show_problems(rsp)
 end
 

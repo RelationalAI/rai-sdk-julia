@@ -173,7 +173,7 @@ with_engine(CTX) do engine_name
             @testset "exec" begin
                 # Test the synchronous path. We expect a response that contains `metadata`,
                 # `problems`, `results` and the `transaction` information.
-                query_string = "x, x^2, x^3, x^4 from x in {1; 2; 3; 4; 5}"
+                query_string = "def output(x, x2, x3, x4): {1; 2; 3; 4; 5}(x) and x2 = x^2 and x3 = x^3 and x4 = x^4"
                 resp = exec(CTX, database_name, engine_name, query_string)
 
                 @info "transaction id: $(resp.transaction[:id])"
@@ -207,7 +207,7 @@ with_engine(CTX) do engine_name
             end
 
             @testset "exec_async" begin
-                query_string = "x, x^2, x^3, x^4 from x in {1; 2; 3; 4; 5}"
+                query_string = "def output(x, x2, x3, x4): {1; 2; 3; 4; 5}(x) and x2 = x^2 and x3 = x^3 and x4 = x^4"
                 resp = exec_async(CTX, database_name, engine_name, query_string)
                 @info "transaction id: $(resp.transaction[:id])"
                 resp = wait_until_done(CTX, resp)
@@ -271,7 +271,7 @@ with_engine(CTX) do engine_name
                 @test resp.transaction[:state] == "COMPLETED"
 
                 results = Dict(
-                    exec(CTX, database_name, engine_name, "def output = $csv_relation").results,
+                    exec(CTX, database_name, engine_name, "def output { $(csv_relation) }").results,
                 )
 
                 # `v2` contains the `String` columm, `v1` contains the FilePos column.
@@ -296,7 +296,7 @@ with_engine(CTX) do engine_name
                     return String(take!(io))
                 end
                 @testset "empty arrow file" begin
-                    query_string = "def output = true"
+                    query_string = "def output { true }"
                     resp = exec(CTX, database_name, engine_name, query_string)
                     @info "transaction id: $(resp.transaction[:id])"
                     @test show_result_str(resp) === """[:output]
@@ -304,7 +304,7 @@ with_engine(CTX) do engine_name
                     """
                 end
                 @testset "multiple physical relations" begin
-                    query_string = ":a, 1;  :b, 2,3;  :b, 4,5"
+                    query_string = "def output {(:a, 1); (:b, 2,3); (:b, 4,5)}"
                     resp = exec(CTX, database_name, engine_name, query_string)
                     @info "transaction id: $(resp.transaction[:id])"
                     @test show_result_str(resp) === """[:output, :a, Int64]
@@ -325,7 +325,7 @@ with_engine(CTX) do engine_name
             models = list_models(CTX, database_name, engine_name)
             @test length(models) > 0
 
-            models = Dict("test_model" => "def foo = :bar")
+            models = Dict("test_model" => "def foo { :bar }")
             resp = load_models(CTX, database_name, engine_name, models)
             @info "transaction id: $(resp.transaction[:id])"
             @test resp.transaction.state == "COMPLETED"
@@ -345,7 +345,7 @@ with_engine(CTX) do engine_name
             @test !("test_model" in models)
 
             # test escape special rel character
-            models = Dict("percent" => "def foo = \"98%\"")
+            models = Dict("percent" => "def foo { \"98%\" }")
             resp = load_models(CTX, database_name, engine_name, models)
             @info "transaction id: $(resp.transaction[:id])"
             @test resp.transaction.state == "COMPLETED"
@@ -354,7 +354,7 @@ with_engine(CTX) do engine_name
             @test resp.transaction.state == "COMPLETED"
             @test length(resp.problems) == 0
 
-            models = Dict("percent" => "def foo = \"98\\%\"")
+            models = Dict("percent" => "def foo { \"98\\%\" }")
             resp = load_models(CTX, database_name, engine_name, models)
             @info "transaction id: $(resp.transaction[:id])"
             @test resp.transaction.state == "COMPLETED"
@@ -374,7 +374,7 @@ with_engine(CTX) do engine_name
             @test !("percent" in models)
 
             # test escape """
-            models = Dict("triple_quoted" => "def foo = \"\"\"98\\%\"\"\" ")
+            models = Dict("triple_quoted" => "def foo { \"\"\"98\\%\"\"\" }")
             resp = load_models(CTX, database_name, engine_name, models)
             @info "transaction id: $(resp.transaction[:id])"
             @test resp.transaction.state == "COMPLETED"
