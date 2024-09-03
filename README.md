@@ -60,7 +60,7 @@ $ julia --project=. examples/list-engines.jl
 The procedure for registering a new package is the same as for releasing a new version.
 If the registration bot is not added to the repository, `@JuliaRegistrator` register will not result in package registration.
 
- Quick Summary:
+ Quick Summary (TLDR):
 
 1. Set the `(Julia)Project.toml` version field in your repository to your new desired `version`.
 2. Comment `@JuliaRegistrator register()` on the commit/branch you want to register (e.g. like [here](https://github.com/JuliaRegistries/Registrator.jl/issues/61#issuecomment-483486641) or [here](https://github.com/chakravala/Grassmann.jl/commit/3c3a92610ebc8885619f561fe988b0d985852fce#commitcomment-33233149)).
