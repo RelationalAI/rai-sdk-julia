@@ -2,6 +2,9 @@
 
 ## main
 
+## v0.2.9
+* Transitioned to CoreRel
+
 ## v0.2.8
 * Updated HTTP lib to v1.9.15
 
