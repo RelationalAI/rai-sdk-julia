@@ -213,6 +213,7 @@ function _request(ctx::Context, method, path; query = nothing, body = UInt8[], k
             return JSON3.read(rsp.body)
         end
     catch e
+        @info "_request for $path failed with error"
         if e isa HTTP.ExceptionRequest.StatusError
             throw(HTTPError(e.status, String(e.response.body)))
         else
@@ -637,26 +638,35 @@ function get_transaction_metadata(ctx::Context, id::AbstractString; kw...)
     path = PATH_ASYNC_TRANSACTIONS * "/$id/metadata"
     path = _mkurl(ctx, path)
     headers = _ensure_proto_accept_header(get(kw, :headers, []))
-    rsp = @mock request(ctx, "GET", path; kw..., headers, readtimeout=120)
+    @info "get_transaction_metadata - $path - sending request"
+    rsp = @mock request(ctx, "GET", path; kw..., headers)
+    @info "get_transaction_metadata - $path - response received"
     d = ProtoBuf.ProtoDecoder(IOBuffer(rsp.body));
     metadata = ProtoBuf.decode(d, protocol.MetadataInfo)
+    @info "get_transaction_metadata - $path - response parsed"
     return metadata
 end
 
 function get_transaction_problems(ctx::Context, id::AbstractString; kw...)
     path = PATH_ASYNC_TRANSACTIONS * "/$id/problems"
-    rsp = _get(ctx, path; kw..., readtimeout=120)
+    @info "get_transaction_problems - $path - sending request"
+    rsp = _get(ctx, path; kw...)
+    @info "get_transaction_problems - $path - response received"
     return rsp
 end
 
 function get_transaction_results(ctx::Context, id::AbstractString; kw...)
     path = PATH_ASYNC_TRANSACTIONS * "/$id/results"
     path = _mkurl(ctx, path)
-    rsp = @mock request(ctx, "GET", path; kw..., readtimeout=120)
+    @info "get_transaction_results - $path - sending request"
+    rsp = @mock request(ctx, "GET", path; kw...)
+    @info "get_transaction_results - $path - response received"
     content_type = HTTP.header(rsp, "Content-Type")
     if !occursin("multipart/form-data", content_type)
+        @info "get_transaction_results - $path - unexpected response content-type"
         throw(HTTPError(400, "Unexpected response content-type for rsp:\n$rsp"))
     end
+    @info "get_transaction_results - $path - parsing response"
     return _parse_multipart_results_response(rsp)
 end
 
