@@ -64,9 +64,12 @@ If the registration bot is not added to the repository, `@JuliaRegistrator` regi
 
 1. Set the `(Julia)Project.toml` version field in your repository to your new desired `version`.
 2. Comment `@JuliaRegistrator register()` on the commit/branch you want to register (e.g. like [here](https://github.com/JuliaRegistries/Registrator.jl/issues/61#issuecomment-483486641) or [here](https://github.com/chakravala/Grassmann.jl/commit/3c3a92610ebc8885619f561fe988b0d985852fce#commitcomment-33233149)).
+**Note: Comment should be made on main after PR is merged.**
 3. If something is incorrect, adjust, and redo step 1
 4. If the automatic tests pass, but a moderator makes suggestions (e.g., manually updating your `(Julia)Project.toml` to include a [compat] section with version requirements for dependencies), then incorporate suggestions as you see fit into a new commit, and redo step 2 for the new commit. You don't need to do anything to close out the old request.
 5. Finally, either rely on the [TagBot GitHub Action](https://github.com/marketplace/actions/julia-tagbot) to tag and make a github release or alternatively tag the release manually.
+6. Check [juliahub](https://juliahub.com/ui/Packages/General/RAI) to make sure package is published successfully
+
 
 ## Support
 
